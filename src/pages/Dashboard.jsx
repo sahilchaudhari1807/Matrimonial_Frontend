@@ -1,11 +1,17 @@
-function Dashboard() {
+import { useNavigate } from "react-router-dom";
+function Dashboard({}) {
+  const navigate=useNavigate();
+  const handleLogout =()=>{
+    localStorage.removeItem("token");
+    navigate("/login");
+  }
   return (
     <div className="min-h-screen bg-gray-100">
       
       {/* Navbar */}
       <div className="bg-white shadow-md px-6 py-4 flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800">Matrimonial Dashboard</h1>
-        <button className="bg-red-500 text-white px-4 py-1 rounded hover:bg-red-600">
+        <button onClick={handleLogout}className="bg-red-500 text-white px-4 py-1 rounded hover:bg-red-600">
           Logout
         </button>
       </div>
