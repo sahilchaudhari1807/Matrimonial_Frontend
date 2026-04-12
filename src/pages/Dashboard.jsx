@@ -1,8 +1,9 @@
 import { useNavigate } from "react-router-dom";
-function Dashboard({}) {
+function Dashboard({setToken}) {
   const navigate=useNavigate();
   const handleLogout =()=>{
     localStorage.removeItem("token");
+    setToken(null);
     navigate("/login");
   }
   return (

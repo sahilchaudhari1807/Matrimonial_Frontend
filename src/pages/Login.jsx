@@ -4,7 +4,7 @@ import {useNavigate,Link}  from "react-router-dom";
 
 
 
-function Login({ setPage }) {
+function Login({ setToken }) {
 
   const navigate=useNavigate();
   const [form, setForm] = useState({
@@ -24,14 +24,13 @@ function Login({ setPage }) {
 
       if (res.data && res.data.token) {
         // ✅ Store token
-        localStorage.setItem("token", JSON.stringify(res.data.token));
-        alert("succesfull login");
+        localStorage.setItem("token", (res.data.token));
+        setToken(res.data.token);
+        navigate("/dashboard")
 
         
 
-        // ❌ No dashboard navigation
-        // You can later add setPage("dashboard")
-        navigate("/dashboard");
+       
       } else {
         alert("Invalid response from server");
       }
