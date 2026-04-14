@@ -26,7 +26,7 @@ function Login({ setToken }) {
         // ✅ Store token
         localStorage.setItem("token", (res.data.token));
         setToken(res.data.token);
-        navigate("/dashboard")
+        navigate("/profile");
 
         
 

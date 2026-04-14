@@ -3,6 +3,9 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
+import Profile from "./pages/Profile";
+import Matches from "./pages/Matches"
+import ProfileView from "./pages/ProfileView";
 
 
 function App() {
@@ -30,6 +33,11 @@ function App() {
           path="/dashboard"
           element={token ? <Dashboard setToken={setToken}/> : <Navigate to="/login" />}
         />
+
+        <Route path="/profile" element={<Profile/>}/>
+        <Route path="/matches" element={<Matches/>}/>
+
+        <Route path="/profile/:id" element={<ProfileView />} />
 
       </Routes>
     </BrowserRouter>
