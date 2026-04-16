@@ -1,12 +1,10 @@
 import { useState } from "react";
 import { loginUser } from "../api/authApi";
-import {useNavigate,Link}  from "react-router-dom";
-
-
+import { useNavigate, Link } from "react-router-dom";
 
 function Login({ setToken }) {
+  const navigate = useNavigate();
 
-  const navigate=useNavigate();
   const [form, setForm] = useState({
     username: "",
     password: ""
@@ -23,17 +21,33 @@ function Login({ setToken }) {
       const res = await loginUser(form);
 
       if (res.data && res.data.token) {
+
         // ✅ Store token
-        localStorage.setItem("token", (res.data.token));
+        localStorage.setItem("token", res.data.token);
         setToken(res.data.token);
-        navigate("/profile");
 
-        
+        // ✅ Store current logged-in user
+        localStorage.setItem("currentUser", form.username);
 
-       
+        // ✅ Get all profiles
+        const profiles = JSON.parse(localStorage.getItem("profiles")) || [];
+
+        // ✅ Find profile for this user
+        const userProfile = profiles.find(
+          (p) => p.username === form.username
+        );
+
+        // ✅ Navigation logic
+        if (userProfile) {
+          navigate("/dashboard");   // existing user
+        } else {
+          navigate("/profile");     // new user
+        }
+
       } else {
         alert("Invalid response from server");
       }
+
     } catch (err) {
       console.log(err);
       alert(err.response?.data?.message || "Login Failed");
@@ -48,7 +62,6 @@ function Login({ setToken }) {
         <input
           type="text"
           name="username"
-          autoComplete="username"
           value={form.username}
           onChange={handleChange}
           placeholder="Username"
@@ -58,7 +71,6 @@ function Login({ setToken }) {
         <input
           type="password"
           name="password"
-          autoComplete="current-password"
           value={form.password}
           onChange={handleChange}
           placeholder="Password"
@@ -71,7 +83,9 @@ function Login({ setToken }) {
 
         <p className="text-center mt-4 text-sm">
           Don't have an account?{" "}
-         <Link to="/register" className="text-blue-500 hover:underline">Register</Link>
+          <Link to="/register" className="text-blue-500 hover:underline">
+            Register
+          </Link>
         </p>
       </form>
     </div>
