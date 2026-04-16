@@ -5,39 +5,73 @@ function Dashboard({ setToken }) {
   const navigate = useNavigate();
   const [matches, setMatches] = useState([]);
 
-  const profile = JSON.parse(localStorage.getItem("profile"));
+  // ✅ FIX 1: define data BEFORE using
+  const currentUserId = localStorage.getItem("currentUserId");
+  const profiles = JSON.parse(localStorage.getItem("profiles")) || [];
 
-  // ✅ MATCH LOGIC
+  // ✅ FIX 2: type-safe comparison
+  const currentUser = profiles.find(
+    (p) => String(p.id) === String(currentUserId)
+  );
+
+  // =====================================================
+  // ✅ MATCH LOGIC (FIXED)
+  // =====================================================
   useEffect(() => {
-    const currentUser = JSON.parse(localStorage.getItem("profile"));
+
     const interests = JSON.parse(localStorage.getItem("interests")) || [];
-    const users = JSON.parse(localStorage.getItem("users")) || [];
 
     if (!currentUser) return;
 
-    const sent = interests.filter(i => i.from === currentUser.id);
-    const received = interests.filter(i => i.to === currentUser.id);
+    // ✅ FIX 3: type-safe comparison
+    const sent = interests.filter(
+      (i) => String(i.from) === String(currentUser.id)
+    );
 
-    const mutual = sent.filter(s =>
-      received.some(r => r.from === s.to)
+    const received = interests.filter(
+      (i) => String(i.to) === String(currentUser.id)
+    );
+
+    const mutual = sent.filter((s) =>
+      received.some((r) => String(r.from) === String(s.to))
     );
 
     const matchedUsers = mutual
-      .map(m => users.find(u => u.id === m.to))
-      .filter(Boolean); // ✅ remove undefined
+      .map((m) =>
+        profiles.find((u) => String(u.id) === String(m.to))
+      )
+      .filter(Boolean);
 
     setMatches(matchedUsers);
-  }, []);
 
-  // ✅ Redirect if no profile
+  // ✅ FIX 4: prevent infinite loop
+  }, [currentUserId]);
+
+  // =====================================================
+  // ✅ REDIRECT LOGIC (FIXED)
+  // =====================================================
   useEffect(() => {
-    if (!profile) {
+
+    // ✅ FIX 5: check login first
+    if (!currentUserId) {
+      navigate("/login");
+      return;
+    }
+
+    // ✅ FIX 6: then check profile
+    if (!currentUser) {
       navigate("/profile", { replace: true });
     }
-  }, [profile, navigate]);
 
+  // ✅ FIX 7: correct dependency
+  }, [currentUserId, currentUser, navigate]);
+
+  // =====================================================
+  // ✅ LOGOUT
+  // =====================================================
   const handleLogout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("currentUserId"); // ✅ important
     setToken(null);
     navigate("/login");
   };
@@ -75,7 +109,7 @@ function Dashboard({ setToken }) {
         <div className="bg-white p-6 rounded-xl shadow mb-6 flex justify-between items-center">
           <div>
             <h2 className="text-2xl font-semibold text-gray-700">
-              Welcome, {profile?.username} 👋
+              Welcome, {currentUser?.username} 👋
             </h2>
             <p className="text-gray-500 mt-2">
               Here is your profile overview and activity.
@@ -99,10 +133,10 @@ function Dashboard({ setToken }) {
               Your Profile
             </h3>
 
-            <p><span className="font-semibold">Name:</span> {profile?.username}</p>
-            <p><span className="font-semibold">Age:</span> {profile?.age}</p>
-            <p><span className="font-semibold">City:</span> {profile?.city}</p>
-            <p><span className="font-semibold">Bio:</span> {profile?.bio}</p>
+            <p><span className="font-semibold">Name:</span> {currentUser?.username}</p>
+            <p><span className="font-semibold">Age:</span> {currentUser?.age}</p>
+            <p><span className="font-semibold">City:</span> {currentUser?.city}</p>
+            <p><span className="font-semibold">Bio:</span> {currentUser?.bio}</p>
 
             <button
               onClick={() => navigate("/profile")}
@@ -135,7 +169,7 @@ function Dashboard({ setToken }) {
             </button>
           </div>
 
-          {/* 🔥 MATCHES UI (NEW) */}
+          {/* MATCHES UI */}
           <div className="bg-white p-5 rounded-xl shadow md:col-span-3">
             <h3 className="text-lg font-semibold text-gray-700 mb-4">
               Your Matches ❤️

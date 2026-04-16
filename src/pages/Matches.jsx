@@ -5,22 +5,27 @@ function Matches() {
   const [matches, setMatches] = useState([]);
   const navigate = useNavigate();
 
+  // =====================================================
+  // ✅ HANDLE INTEREST (FIXED)
+  // =====================================================
   const handleInterest = (user) => {
-    const currentUser = JSON.parse(localStorage.getItem("profile"));
 
-    if (!currentUser) return;
+    const currentUserId = localStorage.getItem("currentUserId");
+    if (!currentUserId) return;
 
     const newInterest = {
-      from: currentUser.id,
+      from: currentUserId,
       to: user.id,
       status: "pending"
     };
 
     const interests = JSON.parse(localStorage.getItem("interests")) || [];
 
-    // ✅ Prevent duplicate request (important)
+    // ✅ FIX: type-safe comparison
     const alreadySent = interests.some(
-      (i) => i.from === currentUser.id && i.to === user.id
+      (i) =>
+        String(i.from) === String(currentUserId) &&
+        String(i.to) === String(user.id)
     );
 
     if (alreadySent) {
@@ -29,24 +34,33 @@ function Matches() {
     }
 
     interests.push(newInterest);
-
-    // ✅ Save back
     localStorage.setItem("interests", JSON.stringify(interests));
 
     alert(`Interest sent to ${user.username} ❤️`);
   };
 
+  // =====================================================
+  // ✅ LOAD MATCHES (FIXED)
+  // =====================================================
   useEffect(() => {
-    const users = JSON.parse(localStorage.getItem("users")) || [];
-    const currentUser = JSON.parse(localStorage.getItem("profile"));
+
+    const currentUserId = localStorage.getItem("currentUserId");
+    const profiles = JSON.parse(localStorage.getItem("profiles")) || [];
+
+    // ✅ FIX: type-safe find
+    const currentUser = profiles.find(
+      (p) => String(p.id) === String(currentUserId)
+    );
 
     if (!currentUser) return;
 
-    const filtered = users.filter(
-      (user) => user.id !== currentUser.id
+    // ✅ FIX: type-safe filter
+    const filtered = profiles.filter(
+      (user) => String(user.id) !== String(currentUserId)
     );
 
     setMatches(filtered);
+
   }, []);
 
   return (
@@ -74,7 +88,7 @@ function Matches() {
 
               <button
                 onClick={(e) => {
-                  e.stopPropagation(); // ✅ stop card click
+                  e.stopPropagation();
                   handleInterest(user);
                 }}
                 className="mt-4 w-full bg-pink-500 text-white py-1 rounded hover:bg-pink-600"

@@ -20,31 +20,41 @@ function Login({ setToken }) {
     try {
       const res = await loginUser(form);
 
-      if (res.data && res.data.token) {
+    if (res.data && res.data.token) {
 
-        // ✅ Store token
-        localStorage.setItem("token", res.data.token);
-        setToken(res.data.token);
+  localStorage.setItem("token", res.data.token);
+  setToken(res.data.token);
 
-        // ✅ Store current logged-in user
-        localStorage.setItem("currentUser", form.username);
+  // ✅ Get users
+  const users = JSON.parse(localStorage.getItem("users")) || [];
 
-        // ✅ Get all profiles
-        const profiles = JSON.parse(localStorage.getItem("profiles")) || [];
+  // ✅ Find current user
+  const user = users.find(
+  (u) => u.username === form.username
+);
 
-        // ✅ Find profile for this user
-        const userProfile = profiles.find(
-          (p) => p.username === form.username
-        );
+  if (!user) {
+    alert("User not found");
+    return;
+  }
 
-        // ✅ Navigation logic
-        if (userProfile) {
-          navigate("/dashboard");   // existing user
-        } else {
-          navigate("/profile");     // new user
-        }
+  // ✅ Store current user ID
+  localStorage.setItem("currentUserId", user.id);
 
-      } else {
+const currentUserId = user.id;
+
+  // ✅ Get profiles
+  const profiles = JSON.parse(localStorage.getItem("profiles")) || [];
+
+  // ✅ Find profile using ID
+  const userProfile = profiles.find((p) => String(p.id) === String(currentUserId));
+
+  if (userProfile) {
+    navigate("/dashboard");
+  } else {
+    navigate("/profile");
+  }
+} else {
         alert("Invalid response from server");
       }
 

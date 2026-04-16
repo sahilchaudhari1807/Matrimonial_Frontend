@@ -14,20 +14,35 @@ function Register({ setPage }) {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+ const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    try {
-      const res = await registerUser(form);
+  try {
+    const res = await registerUser(form);
 
-      if (res.data) {
-        navigate("/login");
-      }
-    } catch (err) {
-      console.log(err);
-      
+    if (res.data) {
+
+      const userId = Date.now();
+
+      const newUser = {
+        id: userId,
+        username: form.username,
+        password: form.password
+      };
+
+      const users = JSON.parse(localStorage.getItem("users")) || [];
+
+      users.push(newUser);
+
+      localStorage.setItem("users", JSON.stringify(users));
+
+      navigate("/login");
     }
-  };
+
+  } catch (err) {
+    console.log(err);
+  }
+};
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
