@@ -5,6 +5,9 @@ function Dashboard({ setToken }) {
   const navigate = useNavigate();
   const [matches, setMatches] = useState([]);
 
+  //for showing who liked you
+  const[incomingRequest,setIncomingRequest]=useState([]);
+
   // ✅ FIX 1: define data BEFORE using
   const currentUserId = localStorage.getItem("currentUserId");
   const profiles = JSON.parse(localStorage.getItem("profiles")) || [];
@@ -65,6 +68,38 @@ function Dashboard({ setToken }) {
 
   // ✅ FIX 7: correct dependency
   }, [currentUserId, currentUser, navigate]);
+
+
+  // this useeffect for showing who likes you
+  useEffect(() => {
+  // 🔹 Step 1: Get current logged-in user ID
+  const currentUserId = localStorage.getItem("currentUserId");
+
+  // 🔹 Step 2: Get all interests (who liked whom)
+  const interests = JSON.parse(localStorage.getItem("interests")) || [];
+
+  // 🔹 Step 3: Get all user profiles
+  const profiles = JSON.parse(localStorage.getItem("profiles")) || [];
+
+  // 🔹 Step 4: Find users who liked current user
+  // i.to === currentUserId → means "they liked me"
+  const received = interests.filter(
+    (i) => String(i.to) === String(currentUserId)
+  );
+
+  // 🔹 Step 5: Convert IDs → full user profiles
+  // r.from = user ID who liked me
+  const users = received.map((r) =>
+    profiles.find((p) => String(p.id) === String(r.from))
+  );
+
+  // 🔹 Step 6: Remove undefined values (if profile not found)
+  const validUsers = users.filter(Boolean);
+
+  // 🔹 Step 7: Store in state → UI will update
+  setIncomingRequest(validUsers);
+
+}, [currentUserId]); // 🔸 runs only once when component loads
 
   // =====================================================
   // ✅ LOGOUT
@@ -208,6 +243,51 @@ function Dashboard({ setToken }) {
               </div>
             )}
           </div>
+          {/* ✅✅✅ ADDED THIS BLOCK BELOW MATCHES (ONLY UI) */}
+<div className="bg-white p-5 rounded-xl shadow md:col-span-3 mt-6">
+  <h3 className="text-lg font-semibold text-gray-700 mb-4">
+    People who liked you ❤️
+  </h3>
+
+  {incomingRequest.length === 0 ? (
+    <p className="text-gray-500 text-center">
+      No one liked you yet 😢
+    </p>
+  ) : (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+      {incomingRequest.map((user) => (
+        <div
+          key={user.id}
+          className="border rounded-lg p-4 shadow-sm hover:shadow-md transition"
+        >
+          <h4 className="text-lg font-bold text-gray-800">
+            {user.username}
+          </h4>
+
+          <p className="text-sm text-gray-600 mt-1">
+            🎂 {user.age} | 📍 {user.city}
+          </p>
+
+          <p className="text-sm text-gray-500 mt-2">
+            {user.bio}
+          </p>
+
+          <div className="flex gap-2 mt-3">
+            <button className="w-full bg-green-500 text-white py-1 rounded hover:bg-green-600">
+              Accept ❤️
+            </button>
+
+            <button className="w-full bg-gray-300 text-black py-1 rounded hover:bg-gray-400">
+              Ignore ❌
+            </button>
+          </div>
+        </div>
+      ))}
+
+    </div>
+  )}
+</div>
 
         </div>
 
