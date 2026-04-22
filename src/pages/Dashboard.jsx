@@ -20,36 +20,55 @@ function Dashboard({ setToken }) {
   // =====================================================
   // ✅ MATCH LOGIC (FIXED)
   // =====================================================
-  useEffect(() => {
+  // this useEffect for showing who likes you
+useEffect(() => {
+  // 🔹 Step 1: Get current logged-in user ID
+  const currentUserId = localStorage.getItem("currentUserId");
 
-    const interests = JSON.parse(localStorage.getItem("interests")) || [];
+  // 🔹 Step 2: Get all interests (who liked whom)
+  const interests = JSON.parse(localStorage.getItem("interests")) || [];
 
-    if (!currentUser) return;
+  // 🔹 Step 3: Get all user profiles
+  const profiles = JSON.parse(localStorage.getItem("profiles")) || [];
 
-    // ✅ FIX 3: type-safe comparison
-    const sent = interests.filter(
-      (i) => String(i.from) === String(currentUser.id)
-    );
+  // 🔹 Step 4: Find users who liked current user
+  // Example:
+  // A → B
+  // if current user = B
+  // then A should come in received
+  const received = interests.filter(
+    (i) => String(i.to) === String(currentUserId)
+  );
 
-    const received = interests.filter(
-      (i) => String(i.to) === String(currentUser.id)
-    );
+  // 🔹 Step 5: Remove already matched users
+  // If both exist:
+  // A → B
+  // B → A
+  // then don't show again in incoming requests
+  const pendingRequests = received.filter((request) => {
+    const reverseExists = interests.some((item) => {
+      return (
+        String(item.from) === String(currentUserId) &&
+        String(item.to) === String(request.from)
+      );
+    });
 
-    const mutual = sent.filter((s) =>
-      received.some((r) => String(r.from) === String(s.to))
-    );
+    // keep only if reverse interest does NOT exist
+    return !reverseExists;
+  });
 
-    const matchedUsers = mutual
-      .map((m) =>
-        profiles.find((u) => String(u.id) === String(m.to))
-      )
-      .filter(Boolean);
+  // 🔹 Step 6: Convert IDs → full user profiles
+  const users = pendingRequests.map((r) =>
+    profiles.find((p) => String(p.id) === String(r.from))
+  );
 
-    setMatches(matchedUsers);
+  // 🔹 Step 7: Remove undefined values
+  const validUsers = users.filter(Boolean);
 
-  // ✅ FIX 4: prevent infinite loop
-  }, [currentUserId]);
+  // 🔹 Step 8: Store in state → UI updates
+  setIncomingRequest(validUsers);
 
+}, [currentUserId]);
   // =====================================================
   // ✅ REDIRECT LOGIC (FIXED)
   // =====================================================
@@ -83,9 +102,11 @@ function Dashboard({ setToken }) {
 
   // 🔹 Step 4: Find users who liked current user
   // i.to === currentUserId → means "they liked me"
-  const received = interests.filter(
-    (i) => String(i.to) === String(currentUserId)
-  );
+ const received = interests.filter(
+  (i) =>
+    String(i.to) === String(currentUserId) &&
+    i.status === "pending"
+);
 
   // 🔹 Step 5: Convert IDs → full user profiles
   // r.from = user ID who liked me
@@ -95,6 +116,7 @@ function Dashboard({ setToken }) {
 
   // 🔹 Step 6: Remove undefined values (if profile not found)
   const validUsers = users.filter(Boolean);
+  
 
   // 🔹 Step 7: Store in state → UI will update
   setIncomingRequest(validUsers);
@@ -110,6 +132,77 @@ function Dashboard({ setToken }) {
     setToken(null);
     navigate("/login");
   };
+
+ const handleAccept = (senderId) => {
+  // 🔹 Step 1: Get current logged-in user ID
+  const currentUserId = localStorage.getItem("currentUserId");
+
+  // 🔹 Step 2: Get all interests from localStorage
+  const interests =
+    JSON.parse(localStorage.getItem("interests")) || [];
+
+     console.log("currentUserId:", currentUserId);
+  console.log("senderId:", senderId);
+  console.log("Before Accept interests:", interests);
+
+  // 🔹 Step 3: Check if reverse interest already exists
+  // currentUser → sender
+  const alreadyExists = interests.some((item) => {
+    return (
+      String(item.from) === String(currentUserId) &&
+      String(item.to) === String(senderId)
+    );
+  });
+
+  // 🔹 Step 4: If reverse interest does NOT exist
+  // create reverse interest (match created)
+  if (!alreadyExists) {
+    interests.push({
+      from: currentUserId,
+      to: senderId,
+      status:"pending"
+    });
+  }
+
+const updatedInterests = interests.map((item) => {
+  if (
+    String(item.from) === String(senderId) &&
+    String(item.to) === String(currentUserId)
+  ) {
+    return {
+      ...item,
+      status: "accepted",
+    };
+  }
+
+  return item;
+});
+
+localStorage.setItem(
+  "interests",
+  JSON.stringify(updatedInterests)
+);
+
+  // 🔹 Step 6: Save updated interests
+  localStorage.setItem(
+    "interests",
+    JSON.stringify(updatedInterests)
+  );
+
+  // 🔹 Step 7: Remove accepted user from UI instantly
+  const updateRequest = incomingRequest.filter((user) => {
+    return String(user.id) !== String(senderId);
+  });
+
+  // 🔹 Step 8: Update UI state
+  setIncomingRequest(updateRequest);
+
+  // 🔹 Step 9: Save updated request list
+  localStorage.setItem(
+    "updateRequest",
+    JSON.stringify(updateRequest)
+  );
+};
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -247,6 +340,7 @@ function Dashboard({ setToken }) {
 <div className="bg-white p-5 rounded-xl shadow md:col-span-3 mt-6">
   <h3 className="text-lg font-semibold text-gray-700 mb-4">
     People who liked you ❤️
+ 
   </h3>
 
   {incomingRequest.length === 0 ? (
@@ -274,7 +368,7 @@ function Dashboard({ setToken }) {
           </p>
 
           <div className="flex gap-2 mt-3">
-            <button className="w-full bg-green-500 text-white py-1 rounded hover:bg-green-600">
+            <button     onClick={() => handleAccept(user.id)}className="w-full bg-green-500 text-white py-1 rounded hover:bg-green-600">
               Accept ❤️
             </button>
 
