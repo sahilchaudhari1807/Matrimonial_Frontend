@@ -6,6 +6,7 @@ import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
 import Matches from "./pages/Matches"
 import ProfileView from "./pages/ProfileView";
+import Chat from "./pages/Chat";
 
 
 function App() {
@@ -38,6 +39,8 @@ function App() {
         <Route path="/matches" element={<Matches/>}/>
 
         <Route path="/profile/:id" element={<ProfileView />} />
+
+        <Route path="/chat" element={<Chat/>}/>
 
       </Routes>
     </BrowserRouter>
