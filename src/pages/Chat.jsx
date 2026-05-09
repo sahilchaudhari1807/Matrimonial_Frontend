@@ -4,7 +4,7 @@ import { useLocation } from "react-router-dom";
 function Chat() {
   const location = useLocation();
  const [typingUsers, setTypingUsers] = useState({});
- const [LastSeenUsers,SetLastSeenUsers]=useState({});
+const [lastSeenUsers, setLastSeenUsers] = useState({});
  const [input, setInput] = useState("");
  const timerRef = useRef(null);
 
@@ -128,16 +128,81 @@ const chatId = otherId !== null
 
 };
 
+
+// last seen
+useEffect(() => {
+
+   const storedUsers =
+      JSON.parse(
+         localStorage.getItem("lastSeenUsers")
+      ) || {};
+
+   setLastSeenUsers(storedUsers);
+
+   const updatedObject = {
+      ...storedUsers,
+      [currentUserId]: new Date(),
+   };
+
+   setLastSeenUsers(updatedObject);
+
+   localStorage.setItem(
+      "lastSeenUsers",
+      JSON.stringify(updatedObject)
+   );
+
+}, [currentUserId]);
+
+
   if (!user) return null;
 
   return (
     <div className="flex flex-col h-screen bg-gray-100">
 
       {/* 🔹 Header */}
-      <div className="flex items-center gap-3 bg-white shadow p-4">
-        <button className="text-xl">←</button>
-        <span className="font-semibold text-lg">{user?.username}</span>
-      </div>
+     {/* 🔹 Header */}
+<div className="flex items-center gap-3 bg-white shadow p-4">
+
+  <button className="text-xl">←</button>
+
+  <div className="flex flex-col">
+
+    {/* Username */}
+    <span className="font-semibold text-lg">
+      {user?.username}
+    </span>
+
+    {/* Typing OR Last Seen */}
+    {typingUsers[chatId] ? (
+
+      <span className="text-xs text-green-500">
+        Typing...
+      </span>
+
+    ) : (
+
+      <span className="text-xs text-gray-500">
+
+        Last seen{" "}
+
+        {lastSeenUsers[user.id]
+
+          ? new Date(
+              lastSeenUsers[user.id]
+            ).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+
+          : "recently"}
+
+      </span>
+
+    )}
+
+  </div>
+
+</div>
 
       {/* 🔹 Messages */}
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2">
@@ -202,11 +267,7 @@ const chatId = otherId !== null
       
       
 
-{typingUsers[chatId] && (
-   <p className="text-sm text-gray-500 px-3">
-      Typing...
-   </p>
-)}
+
       {/*typingUsers[chatId] === user.id && (
    <p>{user.username} is typing...</p>
 )*/}
