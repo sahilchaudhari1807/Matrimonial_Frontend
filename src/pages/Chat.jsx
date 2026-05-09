@@ -3,13 +3,21 @@ import { useLocation } from "react-router-dom";
 
 function Chat() {
   const location = useLocation();
+ const [typingUsers, setTypingUsers] = useState({});
+ const [LastSeenUsers,SetLastSeenUsers]=useState({});
+ const [input, setInput] = useState("");
+ const timerRef = useRef(null);
+
+
+
+ 
 
 const user = location.state || JSON.parse(localStorage.getItem("chatUser"));
 
 const bottomRef = useRef(null);
 
-const currentUserId = localStorage.getItem("currentUserId");
 
+const currentUserId=localStorage.getItem("currentUserId");
 const myID = Number(currentUserId);
 const otherId = user ? Number(user.id): null;
 
@@ -21,7 +29,7 @@ const chatId = otherId !== null
 
 
   const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState("");
+  
 
   // 🔹 Load messages
   useEffect(() => {
@@ -30,7 +38,18 @@ const chatId = otherId !== null
     const allChats = JSON.parse(localStorage.getItem("allChats")) || {};
     const userMessages = allChats[chatId] || [];
 
-    setMessages(userMessages);
+    const updateMessage=userMessages.map(message=>{
+      if(message.sender!==currentUserId && message.seen===false){
+          return { ...message, seen: true };
+      }
+     else{
+      return message;
+     }
+    })
+    allChats[chatId]=updateMessage;
+    localStorage.setItem("allChats",JSON.stringify(allChats));
+  
+    setMessages(updateMessage);
   }, [user,chatId]);
 
   // 🔹 Auto-scroll
@@ -45,6 +64,8 @@ const chatId = otherId !== null
       if(event.key=="allChats"){
       const allChats = JSON.parse(localStorage.getItem("allChats")) || {};
     const userMessages = allChats[chatId] || [];
+
+
     setMessages(userMessages);
       }
     }
@@ -63,7 +84,8 @@ const chatId = otherId !== null
     const newMessage = {
       text: input,
       sender: currentUserId,
-      time: Date.now()
+      time: Date.now(),
+      seen:false
     };
 
     const updatedMessages = [...messages, newMessage];
@@ -77,6 +99,34 @@ const chatId = otherId !== null
 
   
   };
+
+  const handleTyping = (e) => {
+
+   setInput(e.target.value);
+
+   setTypingUsers((prev) => ({
+      ...prev,
+      [chatId]: currentUserId
+   }));
+
+
+   clearTimeout(timerRef.current);
+
+   timerRef.current = setTimeout(() => {
+
+      setTypingUsers((prev) => {
+
+         const updated = { ...prev };
+
+         delete updated[chatId];
+
+         return updated;
+
+      });
+
+   }, 2000);
+
+};
 
   if (!user) return null;
 
@@ -109,13 +159,35 @@ const chatId = otherId !== null
               <div className="flex flex-col">
                 <span>{msg.text}</span>
 
-                <span className="text-[10px] mt-1 opacity-70 text-right">
-                  {msg.time &&
-                    new Date(msg.time).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit"
-                    })}
-                </span>
+              <div className="flex items-center justify-end gap-1 text-[10px] mt-1 opacity-70">
+
+  {/* 🔹 Time */}
+  <span>
+    {msg.time &&
+      new Date(msg.time).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit"
+      })}
+  </span>
+
+  {/* 🔹 Show ticks only for my messages */}
+  {isMe && (
+
+    msg.seen === false ? (
+
+      // 🔹 Single tick
+      <span>✓</span>
+
+    ) : (
+
+      // 🔹 Double tick
+      <span>✓✓</span>
+
+    )
+
+  )}
+
+</div>
               </div>
             </div>
           );
@@ -127,12 +199,23 @@ const chatId = otherId !== null
       </div>
 
       {/* 🔹 Input */}
+      
+      
+
+{typingUsers[chatId] && (
+   <p className="text-sm text-gray-500 px-3">
+      Typing...
+   </p>
+)}
+      {/*typingUsers[chatId] === user.id && (
+   <p>{user.username} is typing...</p>
+)*/}
       <div className="flex p-3 bg-white border-t gap-2">
         <input
           type="text"
           placeholder="Type a message..."
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={handleTyping}
           className="flex-1 border rounded px-3 py-2 outline-none"
         />
         <button
