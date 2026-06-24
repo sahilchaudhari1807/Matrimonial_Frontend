@@ -15,13 +15,17 @@ function Profile() {
 
   // ✅ Load existing profile (for update)
   useEffect(() => {
-    const profiles = JSON.parse(localStorage.getItem("profiles")) || [];
-
-    const existingProfile = profiles.find(p => p.id == currentUserId);
-
-    if (existingProfile) {
-      setForm(existingProfile); // pre-fill form
-    }
+    fetch(`http://localhost:8081/users/${currentUserId}`)
+    .then((res) => res.json())
+    .then((data) => {
+      setForm({
+        username: data.name,
+        age: data.age,
+        city: data.city,
+        bio: data.bio
+      });
+    })
+    .catch((err) => console.log(err));
   }, [currentUserId]);
 
   const handleChange = (e) => {
@@ -31,33 +35,39 @@ function Profile() {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    const profiles = JSON.parse(localStorage.getItem("profiles")) || [];
+   // const profiles = JSON.parse(localStorage.getItem("profiles")) || [];
 
-    const newProfile = {
-      id: currentUserId,
-      username: form.username,
-      age: form.age,
-      city: form.city,
-      bio: form.bio
-    };
+   const newProfile = {
+  name: form.username,
+  age: form.age,
+  city: form.city,
+  bio: form.bio
+};
 
-    // ✅ Check if profile exists
-    const index = profiles.findIndex(p => p.id == currentUserId);
+fetch(
+  `http://localhost:8081/users/${currentUserId}`,
+  {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(newProfile)
+  }
+)
+.then((res) => {
+  console.log("Status:", res.status);
+  return res.json();
+})
+.then((data) => {
+  console.log("Saved Profile:", data);
 
-    if (index !== -1) {
-      // ✅ UPDATE
-      profiles[index] = newProfile;
-    } else {
-      // ✅ CREATE
-      profiles.push(newProfile);
-    }
+  alert("Profile Saved!");
 
-    // ✅ Save profiles
-    localStorage.setItem("profiles", JSON.stringify(profiles));
-
-    alert("Profile Saved!");
-
-    navigate("/dashboard");
+  navigate("/dashboard");
+})
+.catch((err) => {
+  console.error(err);
+});
   };
 
   return (

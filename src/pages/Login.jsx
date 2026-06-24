@@ -15,54 +15,71 @@ function Login({ setToken }) {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    try {
-      const res = await loginUser(form);
+  try {
+
+    const res = await loginUser(form);
+
+    console.log(res.data);
 
     if (res.data && res.data.token) {
 
-  localStorage.setItem("token", res.data.token);
-  setToken(res.data.token);
+      localStorage.setItem("token", res.data.token);
+      setToken(res.data.token);
 
-  // ✅ Get users
-  const users = JSON.parse(localStorage.getItem("users")) || [];
+      localStorage.setItem(
+        "currentUserId",
+        res.data.id
+      );
 
-  // ✅ Find current user
-  const user = users.find(
-  (u) => u.username === form.username
-);
+      const userIdCurrent =
+        localStorage.getItem("currentUserId");
 
-  if (!user) {
-    alert("User not found");
-    return;
-  }
+      try {
 
-  // ✅ Store current user ID
-  localStorage.setItem("currentUserId", user.id);
+        const profileRes = await fetch(
+          `http://localhost:8081/users/${userIdCurrent}`
+        );
 
-const currentUserId = user.id;
+        const userProfile =
+          await profileRes.json();
 
-  // ✅ Get profiles
-  const profiles = JSON.parse(localStorage.getItem("profiles")) || [];
+        console.log(
+          "userProfile =",
+          userProfile
+        );
 
-  // ✅ Find profile using ID
-  const userProfile = profiles.find((p) => String(p.id) === String(currentUserId));
+        if (userProfile) {
+          navigate("/dashboard");
+        } else {
+          navigate("/profile");
+        }
 
-  if (userProfile) {
-    navigate("/dashboard");
-  } else {
-    navigate("/profile");
-  }
-} else {
-        alert("Invalid response from server");
+      } catch (err) {
+
+        console.log(err);
+        navigate("/profile");
+
       }
 
-    } catch (err) {
-      console.log(err);
-      alert(err.response?.data?.message || "Login Failed");
+    } else {
+
+      alert("Invalid response from server");
+
     }
-  };
+
+  } catch (err) {
+
+    console.log(err);
+
+    alert(
+      err.response?.data?.message ||
+      "Login Failed"
+    );
+
+  }
+};
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
@@ -100,6 +117,6 @@ const currentUserId = user.id;
       </form>
     </div>
   );
-}
+} 
 
 export default Login;

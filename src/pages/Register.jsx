@@ -19,25 +19,13 @@ function Register({ setPage }) {
 
   try {
     const res = await registerUser(form);
-
-    if (res.data) {
-
-      const userId = Date.now();
-
-      const newUser = {
-        id: userId,
-        username: form.username,
-        password: form.password
-      };
-
-      const users = JSON.parse(localStorage.getItem("users")) || [];
-
-      users.push(newUser);
-
-      localStorage.setItem("users", JSON.stringify(users));
+    //const userId=res.data.id;
+   
+   
+     console.log(res.data);
 
       navigate("/login");
-    }
+    
 
   } catch (err) {
     console.log(err);

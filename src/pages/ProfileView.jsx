@@ -1,13 +1,20 @@
+import { useState,useEffect } from "react";
 import {useParams} from "react-router-dom";
 
-function ProfileView(){
-    const{id}=useParams();
 
-    const users=JSON.parse(localStorage.getItem("users")) || [];
-     const user = users.find((u) => u.id === Number(id));
+function ProfileView(){
+  const [user,setUser]=useState(null);
+    const{id}=useParams();
+    useEffect(() => {
+   fetch(`http://localhost:8081/users/${id}`)
+      .then(res => res.json())
+      .then(data => setUser(data));
+}, [id]);
+
+   
 
    if (!user) {
-    return <h2>User not found</h2>;
+    return <h2>Loading...</h2>;
   }
 
   return (

@@ -2,20 +2,31 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 
 function Dashboard({ setToken }) {
-  const navigate = useNavigate();
 
+  const navigate = useNavigate();
   const [matches, setMatches] = useState([]);
-  const [chats, setChats] = useState({});
   const [incomingRequest, setIncomingRequest] =
     useState([]);
+  const [userStatuses, setUserStatuses] = useState({});
+  const [dashBoardChats, setDashBoardChats] = useState([]);
+  const [profiles, setProfiles] = useState([]);
+
+  const [receivedRequests, setReceivedRequests] = useState([]);
+
 
   const currentUserId =
     localStorage.getItem("currentUserId");
 
-  const myId = Number(currentUserId);
 
-  const profiles =
-    JSON.parse(localStorage.getItem("profiles")) || [];
+useEffect(() => {
+
+  fetch("http://localhost:8081/users")
+    .then((res) => res.json())
+    .then((data) => setProfiles(data))
+    .catch((err) => console.log(err));
+
+}, []);
+  
 
   const currentUser = profiles.find(
     (p) => String(p.id) === String(currentUserId)
@@ -25,192 +36,274 @@ function Dashboard({ setToken }) {
   // REDIRECT LOGIC
   // =====================================================
   useEffect(() => {
+    console.log("currentUserId:", currentUserId);
+    console.log("currentUser:", currentUser);
     if (!currentUserId) {
       navigate("/login");
       return;
     }
 
-    if (!currentUser) {
+   /* if (!currentUser) {
       navigate("/profile", { replace: true });
-    }
+    }*/
   }, [currentUserId, currentUser, navigate]);
 
   // =====================================================
   // INCOMING REQUESTS
   // =====================================================
   useEffect(() => {
-    const interests =
-      JSON.parse(localStorage.getItem("interests")) || [];
 
-    const received = interests.filter(
-      (i) =>
-        String(i.to) === String(currentUserId) &&
-        i.status === "pending"
-    );
+  console.log(
+    "currentUserId:",
+    localStorage.getItem("currentUserId")
+  );
 
-    const users = received.map((r) =>
-      profiles.find(
-        (p) => String(p.id) === String(r.from)
-      )
-    );
+  fetch(
+    `http://localhost:8081/interests/incoming/${currentUserId}`
+  )
+    .then((res) => res.json())
+    .then((data) => {
 
-    setIncomingRequest(users.filter(Boolean));
-  }, [currentUserId]);
+      console.log(
+        "Incoming Requests:",
+        data
+      );
 
+      setIncomingRequest(data);
+
+    })
+    .catch((err) => {
+      console.log(err);
+    });
+
+}, [currentUserId]);
   // =====================================================
   // MATCHES
   // =====================================================
   useEffect(() => {
-    const interests =
-      JSON.parse(localStorage.getItem("interests")) || [];
+  
 
-    const validUsers = interests.filter((item) => {
-      return (
-        String(item.from) === String(currentUserId) &&
-        item.status === "accepted"
-      );
-    });
-
-    const users = validUsers.map((item) => {
-      return profiles.find((p) => {
-        return String(p.id) === String(item.to);
-      });
-    });
-
-    setMatches(users.filter(Boolean));
+     fetch(`http://localhost:8081/GetMatches/${currentUserId}`)
+     .then((res)=>res.json())
+     .then((data)=>{
+      console.log("Matches API:", data);
+      setMatches(data);
+     })
+     .catch((err)=>console.log(err));
   }, [currentUserId]);
 
   // =====================================================
   // LOAD CHATS
   // =====================================================
+
+
+
   useEffect(() => {
-    const allChats =
-      JSON.parse(localStorage.getItem("allChats")) || {};
-
-    setChats(allChats);
-  }, []);
 
 
-useEffect(() => {
+    const updateOnlineStatus = async () => {
 
-  // 🔹 Fetch online users
-  const onlineUsers =
-    JSON.parse(localStorage.getItem("onlineUsers")) || [];
+      console.log(
+        "currentUserId:",
+        currentUserId
+      );
 
-  // 🔹 Add current user if not already online
-  if (!onlineUsers.includes(currentUserId)) {
-    onlineUsers.push(currentUserId);
-  }
+      console.log(
+        "Number:",
+        Number(currentUserId)
+      );
 
-  // 🔹 Save updated online users
-  localStorage.setItem(
-    "onlineUsers",
-    JSON.stringify(onlineUsers)
-  );
+      try {
+        const response = await fetch(`http://localhost:8081/status/online/${Number(currentUserId)}/${true}`, {
+          method: "PUT"
+        })
+        console.log("Status Code:", response.status);
+        console.log("Response:", await response.text());
+      } catch (error) {
+        console.log("error", error);
+      }
+    }
 
-  // 🔹 Handle offline user
-  const handleOffline = () => {
+    // 🔹 Handle offline user
+    const handleOffline = async () => {
 
-    const onlineUsers =
-      JSON.parse(localStorage.getItem("onlineUsers")) || [];
+      console.log(
+        "currentUserId:",
+        currentUserId
+      );
 
-    const updatedUsers = onlineUsers.filter(
-      (userId) => userId !== currentUserId
-    );
+      console.log(
+        "Number:",
+        Number(currentUserId)
+      );
+      try {
+        const response = await fetch(`http://localhost:8081/status/online/${Number(currentUserId)}/${false}`, {
+          method: "PUT"
+        })
+      } catch (error) {
+        console.log("error", error);
+      }
 
-    localStorage.setItem(
-      "onlineUsers",
-      JSON.stringify(updatedUsers)
-    );
-  };
+    };
 
-  // 🔹 Add browser event
-  window.addEventListener(
-    "beforeunload",
-    handleOffline
-  );
-
-  // 🔹 Cleanup
-  return () => {
-    window.removeEventListener(
+    // 🔹 Add browser event
+    window.addEventListener(
       "beforeunload",
       handleOffline
     );
-  };
 
-}, []);
+    updateOnlineStatus();
+    // 🔹 Cleanup
+    return () => {
+      window.removeEventListener(
+        "beforeunload",
+        handleOffline
+      );
+    };
 
+
+
+  }, []);
+
+
+
+
+
+  // unread counts
+
+
+
+
+  useEffect(() => {
+
+    const fetchOnlineUsers = async () => {
+
+      for (const chat of dashBoardChats) {
+
+        const response = await fetch(
+          `http://localhost:8081/status/${chat.otherUserId}`
+        );
+
+        const statusData = await response.json();
+
+        setUserStatuses((prev) => ({
+          ...prev,
+          [chat.otherUserId]: statusData
+        }));
+
+      }
+
+    };
+
+    fetchOnlineUsers();
+
+    const interval = setInterval(() => {
+      fetchOnlineUsers();
+    }, 3000);
+
+    return () => clearInterval(interval);
+
+  }, [dashBoardChats]);
   // =====================================================
   // LOGOUT
   // =====================================================
-  const handleLogout = () => {
+  const handleLogout = async () => {
+
+    try {
+
+      // 🔹 Update offline status in backend
+      await fetch(
+        `http://localhost:8081/status/online/${Number(currentUserId)}/${false}`,
+        {
+          method: "PUT"
+        }
+      );
+
+    } catch (error) {
+
+      console.log(
+        "Offline update error",
+        error
+      );
+
+    }
+
+    // 🔹 Remove auth data
     localStorage.removeItem("token");
     localStorage.removeItem("currentUserId");
 
     setToken(null);
 
+    // 🔹 Navigate to login
     navigate("/login");
+
   };
+
+
+  /// getting all data last seen,last message etc
+  useEffect(() => {
+    const fetchDashBoardChats = async () => {
+      try {
+        const response = await fetch(`http://localhost:8081/messages/dashboard/${currentUserId}`);
+
+        const data = await response.json();
+        setDashBoardChats(data);
+      } catch (error) {
+        console.log("error while fetching data", error);
+      }
+
+
+
+    }
+    fetchDashBoardChats();
+
+
+    const interval=setInterval(()=>{
+      fetchDashBoardChats();
+    },10000)
+
+    return () => clearInterval(interval);
+  }, [currentUserId])
+
+
 
   // =====================================================
   // ACCEPT REQUEST
   // =====================================================
-  const handleAccept = (senderId) => {
-    const interests =
-      JSON.parse(localStorage.getItem("interests")) || [];
-
-    const alreadyExists = interests.some((item) => {
-      return (
-        String(item.from) === String(currentUserId) &&
-        String(item.to) === String(senderId)
-      );
-    });
-
-    if (!alreadyExists) {
-      interests.push({
-        from: currentUserId,
-        to: senderId,
-        status: "accepted",
-
-      });
+ const handleAccept = (senderId) => {
+  fetch(
+    `http://localhost:8081/accept?fromUserId=${senderId}&toUserId=${currentUserId}`,
+    {
+      method: "PUT",
     }
-
-    const updatedInterests = interests.map((item) => {
-      if (
-        String(item.from) === String(senderId) &&
-        String(item.to) === String(currentUserId)
-      ) {
-        return {
-          ...item,
-          status: "accepted",
-        };
+  )
+    .then((res) => {
+      if (!res.ok) {
+        throw new Error("Failed to accept request");
       }
 
-      return item;
+      // Fetch updated requests after accept
+      return fetch(
+        `http://localhost:8081/interests/AllRequest/${currentUserId}`
+      );
+    })
+    .then((res) => res.json())
+    .then((data) => {
+      setReceivedRequests(data);
+    })
+    .catch((err) => {
+      console.error(err);
     });
+};
 
-    localStorage.setItem(
-      "interests",
-      JSON.stringify(updatedInterests)
-    );
+useEffect(() => {
+  fetch(`http://localhost:8081/interests/AllRequest/${currentUserId}`)
+    .then(res => res.json())
+    .then(data => setReceivedRequests(data));
+}, []);
 
-    const matchedUser = profiles.find((p) => {
-      return String(p.id) === String(senderId);
-    });
-
-    if (matchedUser) {
-      setMatches((prev) => [...prev, matchedUser]);
-    }
-
-    const updatedRequest =
-      incomingRequest.filter((user) => {
-        return (
-          String(user.id) !== String(senderId)
-        );
-      });
-
-    setIncomingRequest(updatedRequest);
-  };
+    
+  
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-100">
@@ -269,7 +362,7 @@ useEffect(() => {
             <div>
 
               <h2 className="text-3xl font-bold">
-                Welcome, {currentUser?.username} 👋
+                Welcome, {currentUser?.name} 👋
               </h2>
 
               <p className="mt-2 text-pink-100">
@@ -305,7 +398,7 @@ useEffect(() => {
               <div>
 
                 <h3 className="text-xl font-bold text-gray-800">
-                  {currentUser?.username}
+                  {currentUser?.name}
                 </h3>
 
                 <p className="text-gray-500">
@@ -406,35 +499,20 @@ useEffect(() => {
 
               {matches.map((user) => {
 
-                const otherId = Number(user.id);
+                // 🔹 Find dashboard chat for this user
+                const dashboardChat =
+                  dashBoardChats.find(
+                    (chat) =>
+                      String(chat.otherUserId) ===
+                      String(user.id)
+                  );
 
-                const chatId =
-                  myId < otherId
-                    ? `${myId}_${otherId}`
-                    : `${otherId}_${myId}`;
+                // 🔹 Online status
+                const status =
+                  userStatuses[user.id];
 
-                const messages =
-                  chats[chatId] || [];
-
-                const lastMessage =
-                  messages[messages.length - 1];
-
-                const isMe = String(lastMessage?.sender) === String(currentUserId);
-
-                const unreadMessages = messages.filter(
-                  (message) =>
-                    String(message.sender) !== String(currentUserId)
-                    &&
-                    message.seen === false
-                );
-
-                // 🔹 Total unread count
-                const unreadCount = unreadMessages.length;
-                
-                const onlineUsers=JSON.parse(localStorage.getItem("onlineUsers"))||[];
                 const isOnline =
-  onlineUsers.includes(String(user.id));
-
+                  status?.online;
 
                 return (
 
@@ -445,16 +523,17 @@ useEffect(() => {
 
                     <img
                       src={`https://i.pravatar.cc/300?img=${user.id}`}
-                      alt={user.username}
+                      alt={user.name}
                       className="w-full h-56 object-cover"
                     />
 
                     <div className="p-5">
 
+                      {/* 🔹 Username */}
                       <div className="flex justify-between items-center">
 
                         <h4 className="text-xl font-bold text-gray-800">
-                          {user.username}
+                          {user.name}
                         </h4>
 
                         <span className="bg-pink-100 text-pink-600 px-3 py-1 rounded-full text-sm font-semibold">
@@ -463,36 +542,48 @@ useEffect(() => {
 
                       </div>
 
+                      {/* 🔹 User Info */}
                       <p className="text-gray-500 mt-2">
                         🎂 {user.age} • 📍 {user.city}
                       </p>
 
+                      {/* 🔹 Online Status */}
                       <div className="flex items-center gap-2 mt-3">
 
-                      
-<div className="flex items-center gap-2 mt-3">
+                        <div
+                          className={`w-3 h-3 rounded-full ${isOnline
+                              ? "bg-green-500"
+                              : "bg-gray-400"
+                            }`}
+                        ></div>
 
-  <div
-    className={`w-3 h-3 rounded-full ${
-      isOnline
-        ? "bg-green-500"
-        : "bg-gray-400"
-    }`}
-  ></div>
+                        <span className="text-sm text-gray-500">
 
-  <span className="text-sm text-gray-500">
-    {isOnline ? "Online" : "Offline"}
-  </span>
+                          {isOnline
 
-</div>
+                            ? "Online"
+
+                            : status?.lastSeen
+
+                              ? `Last seen ${new Date(
+                                status.lastSeen
+                              ).toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}`
+
+                              : "Offline"}
+
+                        </span>
 
                       </div>
 
+                      {/* 🔹 Bio */}
                       <p className="text-gray-600 mt-3">
                         {user.bio}
                       </p>
 
-                      {/* Interests */}
+                      {/* 🔹 Interests */}
                       <div className="flex flex-wrap gap-2 mt-4">
 
                         <span className="bg-pink-100 text-pink-600 px-3 py-1 rounded-full text-xs">
@@ -509,49 +600,37 @@ useEffect(() => {
 
                       </div>
 
+                      {/* 🔹 Last Message */}
                       <div className="flex items-center gap-1 mt-4">
-                            {/* 🔹 Last message */}
+
                         <p className="text-sm text-gray-400 italic truncate">
-                          {lastMessage?.text || "No messages yet ✨"}
+
+                          {dashboardChat?.lastMessage ||
+                            "No messages yet ✨"}
+
                         </p>
-                        {/* 🔹 Show ticks only for my messages */}
-                        {isMe && (
-
-                          lastMessage?.seen === false ? (
-
-                            // Single tick
-                            <span className="text-gray-400 text-sm">
-                              ✓
-                            </span>
-
-                          ) : (
-
-                            // Double tick
-                            <span className="text-gray-400 text-sm">
-                              ✓✓
-                            </span>
-
-                          )
-
-                        )}
-
-                    
 
                       </div>
 
-                      {/* 🔹 Unread count */}
-                      {unreadCount > 0 && (
+                      {/* 🔹 Unread Count */}
+                      {dashboardChat?.unreadCount > 0 && (
+
                         <div className="mt-3 inline-block bg-red-500 text-white text-xs px-3 py-1 rounded-full">
-                          {unreadCount} new
+
+                          {dashboardChat?.unreadCount} new
+
                         </div>
+
                       )}
+
+                      {/* 🔹 Chat Button */}
                       <button
                         onClick={() =>
                           navigate("/chat", {
                             state: user,
                           })
                         }
-                        className="mt-5 w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white py-2 rounded-xl hover:scale-105 transition-all duration-300 shadow-lg"
+                        className="mt-5 w-full bg-linear-to-r from-green-500 to-emerald-500 text-white py-2 rounded-xl hover:scale-105 transition-all duration-300 shadow-lg"
                       >
                         Message 💬
                       </button>
@@ -559,7 +638,9 @@ useEffect(() => {
                     </div>
 
                   </div>
+
                 );
+
               })}
 
             </div>
@@ -600,14 +681,14 @@ useEffect(() => {
 
                   <img
                     src={`https://i.pravatar.cc/300?img=${user.id}`}
-                    alt={user.username}
+                    alt={user.name}
                     className="w-full h-56 object-cover"
                   />
 
                   <div className="p-5">
 
                     <h4 className="text-xl font-bold text-gray-800">
-                      {user.username}
+                      {user.name}
                     </h4>
 
                     <p className="text-gray-500 mt-2">
@@ -652,7 +733,8 @@ useEffect(() => {
       </button>
 
     </div>
+    
   );
-}
 
+}
 export default Dashboard;

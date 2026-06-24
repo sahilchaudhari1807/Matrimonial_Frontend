@@ -8,60 +8,51 @@ function Matches() {
   // =====================================================
   // ✅ HANDLE INTEREST (FIXED)
   // =====================================================
-  const handleInterest = (user) => {
+ const handleInterest = (user) => {
 
-    const currentUserId = localStorage.getItem("currentUserId");
-    if (!currentUserId) return;
+  const currentUserId = localStorage.getItem("currentUserId");
 
-    const newInterest = {
-      from: currentUserId,
-      to: user.id,
-      status: "pending"
-    };
+  console.log("Sender:", currentUserId);
+  console.log("Receiver:", user.id);
 
-    const interests = JSON.parse(localStorage.getItem("interests")) || [];
+  if (!currentUserId) return;
 
-    // ✅ FIX: type-safe comparison
-    const alreadySent = interests.some(
-      (i) =>
-        String(i.from) === String(currentUserId) &&
-        String(i.to) === String(user.id)
-    );
-
-    if (alreadySent) {
-      alert("Already sent interest ❗");
-      return;
+  fetch(
+    `http://localhost:8081/send?fromUserId=${currentUserId}&toUserId=${user.id}`,
+    {
+      method: "POST"
     }
+  )
+    .then((res) => {
+      console.log("Status:", res.status);
 
-    interests.push(newInterest);
-    localStorage.setItem("interests", JSON.stringify(interests));
+      if (!res.ok) {
+        throw new Error("Failed to send interest");
+      }
 
-    alert(`Interest sent to ${user.username} ❤️`);
-  };
+      alert(`Interest sent to ${user.username} ❤️`);
+    })
+    .catch((err) => {
+      console.error(err);
+    });
+};
 
-  // =====================================================
-  // ✅ LOAD MATCHES (FIXED)
-  // =====================================================
-  useEffect(() => {
+useEffect(() => {
 
-    const currentUserId = localStorage.getItem("currentUserId");
-    const profiles = JSON.parse(localStorage.getItem("profiles")) || [];
+  fetch("http://localhost:8081/users")
+    .then((res) => res.json())
+    .then((profiles) => {
 
-    // ✅ FIX: type-safe find
-    const currentUser = profiles.find(
-      (p) => String(p.id) === String(currentUserId)
-    );
+      console.log("Profiles:", profiles);
 
-    if (!currentUser) return;
+      setMatches(profiles);
 
-    // ✅ FIX: type-safe filter
-    const filtered = profiles.filter(
-      (user) => String(user.id) !== String(currentUserId)
-    );
+    })
+    .catch((err) => {
+      console.error(err);
+    });
 
-    setMatches(filtered);
-
-  }, []);
+}, []);
 
   return (
     <div className="min-h-screen bg-gray-100 p-6">
@@ -81,7 +72,7 @@ function Matches() {
               onClick={() => navigate(`/profile/${user.id}`)}
               className="bg-white p-5 rounded-xl shadow hover:shadow-lg transition cursor-pointer"
             >
-              <p><span className="font-semibold">Name:</span> {user.username}</p>
+              <p><span className="font-semibold">Name:</span> {user.name}</p>
               <p><span className="font-semibold">Age:</span> {user.age}</p>
               <p><span className="font-semibold">City:</span> {user.city}</p>
               <p><span className="font-semibold">Bio:</span> {user.bio}</p>
