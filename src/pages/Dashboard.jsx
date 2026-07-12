@@ -1,106 +1,217 @@
+// =====================================================
+// IMPORTS
+// =====================================================
+
+// Used for page navigation
 import { useNavigate } from "react-router-dom";
+
+// React Hooks
 import { useEffect, useState } from "react";
 
 function Dashboard({ setToken }) {
 
+  // =====================================================
+  // REACT ROUTER NAVIGATION
+  // Used to move between pages
+  // Example:
+  // navigate("/login")
+  // navigate("/matches")
+  // =====================================================
   const navigate = useNavigate();
+
+  // =====================================================
+  // STATE VARIABLES
+  // =====================================================
+
+  // Stores accepted matches
   const [matches, setMatches] = useState([]);
+
+  // Stores incoming interest requests
   const [incomingRequest, setIncomingRequest] =
     useState([]);
+
+  // Stores online/offline status of users
+  // Example:
+  // {
+  //   5:{online:true},
+  //   6:{online:false}
+  // }
   const [userStatuses, setUserStatuses] = useState({});
+
+  // Stores dashboard chat information
+  // last message, unread count etc.
   const [dashBoardChats, setDashBoardChats] = useState([]);
+
+  // Stores all user profiles
   const [profiles, setProfiles] = useState([]);
 
-  const [receivedRequests, setReceivedRequests] = useState([]);
+  // Stores received requests
+  const [receivedRequests, setReceivedRequests] =
+    useState([]);
 
-
+  // =====================================================
+  // CURRENT LOGGED-IN USER ID
+  // Stored during login
+  // =====================================================
   const currentUserId =
     localStorage.getItem("currentUserId");
 
+  // =====================================================
+  // FETCH ALL USER PROFILES
+  // Runs only once when component loads
+  // =====================================================
+  useEffect(() => {
 
-useEffect(() => {
+    fetch("http://localhost:8081/users")
 
-  fetch("http://localhost:8081/users")
-    .then((res) => res.json())
-    .then((data) => setProfiles(data))
-    .catch((err) => console.log(err));
+      // Convert response into JSON
+      .then((res) => res.json())
 
-}, []);
-  
+      // Store profiles into state
+      .then((data) => setProfiles(data))
 
+      // Handle errors
+      .catch((err) => console.log(err));
+
+  }, []);
+
+  // =====================================================
+  // FIND CURRENT USER PROFILE
+  // We already have currentUserId
+  // Now find complete profile from profiles array
+  //
+  // Example:
+  // currentUserId = 5
+  //
+  // profiles:
+  // [
+  //   {id:1,name:"Rahul"},
+  //   {id:5,name:"Sahil"}
+  // ]
+  //
+  // Returns:
+  // {id:5,name:"Sahil"}
+  // =====================================================
   const currentUser = profiles.find(
-    (p) => String(p.id) === String(currentUserId)
+    (p) => String(p.userId) === String(currentUserId)
   );
+
+
+  console.log(profiles.map(p => p.id));
+
+  console.log("currentUserId", currentUserId);
+  console.log("profiles", profiles);
+
+  console.log("currentUser", currentUser);
 
   // =====================================================
   // REDIRECT LOGIC
   // =====================================================
   useEffect(() => {
+
     console.log("currentUserId:", currentUserId);
+
     console.log("currentUser:", currentUser);
+
+    // If no user is logged in
+    // send user back to login page
     if (!currentUserId) {
+
       navigate("/login");
+
       return;
     }
 
-   /* if (!currentUser) {
+    /*
+    Future logic:
+
+    If profile not created
+    redirect to profile page
+
+    if (!currentUser) {
       navigate("/profile", { replace: true });
-    }*/
+    }
+    */
+
   }, [currentUserId, currentUser, navigate]);
 
   // =====================================================
-  // INCOMING REQUESTS
+  // FETCH INCOMING REQUESTS
   // =====================================================
   useEffect(() => {
 
-  console.log(
-    "currentUserId:",
-    localStorage.getItem("currentUserId")
-  );
+    console.log(
+      "currentUserId:",
+      localStorage.getItem("currentUserId")
+    );
 
-  fetch(
-    `http://localhost:8081/interests/incoming/${currentUserId}`
-  )
-    .then((res) => res.json())
-    .then((data) => {
 
-      console.log(
-        "Incoming Requests:",
-        data
-      );
+    // Call backend API
+    fetch(
+      `http://localhost:8081/interests/incoming/${currentUserId}`
+    )
 
-      setIncomingRequest(data);
+      // Convert JSON
+      .then((res) => res.json())
 
-    })
-    .catch((err) => {
-      console.log(err);
-    });
+      // Store incoming requests
+      .then((data) => {
 
-}, [currentUserId]);
-  // =====================================================
-  // MATCHES
-  // =====================================================
-  useEffect(() => {
-  
+        console.log(
+          "Incoming Requests:",
+          data
+        );
 
-     fetch(`http://localhost:8081/GetMatches/${currentUserId}`)
-     .then((res)=>res.json())
-     .then((data)=>{
-      console.log("Matches API:", data);
-      setMatches(data);
-     })
-     .catch((err)=>console.log(err));
+        setIncomingRequest(data);
+
+      })
+
+      // Error handling
+      .catch((err) => {
+        console.log(err);
+      });
+
   }, [currentUserId]);
 
   // =====================================================
-  // LOAD CHATS
+  // FETCH MATCHES
   // =====================================================
+  useEffect(() => {
 
+    // Call matches API
+    fetch(
+      `http://localhost:8081/GetMatches/${currentUserId}`
+    )
 
+      // Convert response
+      .then((res) => res.json())
+
+      // Store matches
+      .then((data) => {
+
+        console.log(
+          "Matches API:",
+          data
+        );
+
+        setMatches(data);
+
+      })
+
+      // Handle error
+      .catch((err) => console.log(err));
+
+  }, [currentUserId]);
+  // =====================================================
+  // ONLINE / OFFLINE STATUS MANAGEMENT
+  // =====================================================
 
   useEffect(() => {
 
-
+    // =====================================================
+    // UPDATE USER STATUS TO ONLINE
+    // This runs when Dashboard loads
+    // =====================================================
     const updateOnlineStatus = async () => {
 
       console.log(
@@ -114,17 +225,40 @@ useEffect(() => {
       );
 
       try {
-        const response = await fetch(`http://localhost:8081/status/online/${Number(currentUserId)}/${true}`, {
-          method: "PUT"
-        })
-        console.log("Status Code:", response.status);
-        console.log("Response:", await response.text());
-      } catch (error) {
-        console.log("error", error);
-      }
-    }
 
-    // 🔹 Handle offline user
+        // Call backend API
+        // Mark current user as ONLINE
+        const response = await fetch(
+          `http://localhost:8081/status/online/${Number(currentUserId)}/${true}`,
+          {
+            method: "PUT"
+          }
+        );
+
+        console.log(
+          "Status Code:",
+          response.status
+        );
+
+        console.log(
+          "Response:",
+          await response.text()
+        );
+
+      } catch (error) {
+
+        console.log(
+          "error",
+          error
+        );
+
+      }
+    };
+
+    // =====================================================
+    // UPDATE USER STATUS TO OFFLINE
+    // Called when browser/tab closes
+    // =====================================================
     const handleOffline = async () => {
 
       console.log(
@@ -136,56 +270,76 @@ useEffect(() => {
         "Number:",
         Number(currentUserId)
       );
-      try {
-        const response = await fetch(`http://localhost:8081/status/online/${Number(currentUserId)}/${false}`, {
-          method: "PUT"
-        })
-      } catch (error) {
-        console.log("error", error);
-      }
 
+      try {
+
+        // Call backend API
+        // Mark current user as OFFLINE
+        await fetch(
+          `http://localhost:8081/status/online/${Number(currentUserId)}/${false}`,
+          {
+            method: "PUT"
+          }
+        );
+
+      } catch (error) {
+
+        console.log(
+          "error",
+          error
+        );
+
+      }
     };
 
-    // 🔹 Add browser event
+    // =====================================================
+    // ADD BROWSER EVENT
+    // Runs handleOffline when user closes page
+    // =====================================================
     window.addEventListener(
       "beforeunload",
       handleOffline
     );
 
+    // Mark user online
     updateOnlineStatus();
-    // 🔹 Cleanup
+
+    // =====================================================
+    // CLEANUP
+    // Remove browser event when component unmounts
+    // =====================================================
     return () => {
+
       window.removeEventListener(
         "beforeunload",
         handleOffline
       );
+
     };
-
-
 
   }, []);
 
 
-
-
-
-  // unread counts
-
-
-
+  // =====================================================
+  // FETCH ONLINE STATUS OF MATCHED USERS
+  // =====================================================
 
   useEffect(() => {
 
     const fetchOnlineUsers = async () => {
 
+      // Loop through all dashboard chats
       for (const chat of dashBoardChats) {
 
+        // Get status of each user
         const response = await fetch(
           `http://localhost:8081/status/${chat.otherUserId}`
         );
 
-        const statusData = await response.json();
+        const statusData =
+          await response.json();
 
+        // Store status in state
         setUserStatuses((prev) => ({
           ...prev,
           [chat.otherUserId]: statusData
@@ -195,23 +349,35 @@ useEffect(() => {
 
     };
 
+    // First fetch
     fetchOnlineUsers();
 
+    // Refresh every 3 seconds
     const interval = setInterval(() => {
+
       fetchOnlineUsers();
+
     }, 3000);
 
-    return () => clearInterval(interval);
+    // Cleanup interval
+    return () =>
+      clearInterval(interval);
 
   }, [dashBoardChats]);
+
+
   // =====================================================
-  // LOGOUT
+  // LOGOUT FUNCTION
   // =====================================================
+
   const handleLogout = async () => {
 
     try {
 
-      // 🔹 Update offline status in backend
+      // =====================================================
+      // STEP 1:
+      // Update user status to OFFLINE
+      // =====================================================
       await fetch(
         `http://localhost:8081/status/online/${Number(currentUserId)}/${false}`,
         {
@@ -228,83 +394,217 @@ useEffect(() => {
 
     }
 
-    // 🔹 Remove auth data
+    // =====================================================
+    // STEP 2:
+    // Remove authentication data
+    // =====================================================
+
     localStorage.removeItem("token");
-    localStorage.removeItem("currentUserId");
+
+    localStorage.removeItem(
+      "currentUserId"
+    );
+
+    // =====================================================
+    // STEP 3:
+    // Remove token from React state
+    // =====================================================
 
     setToken(null);
 
-    // 🔹 Navigate to login
+    // =====================================================
+    // STEP 4:
+    // Redirect to Login page
+    // =====================================================
+
     navigate("/login");
 
   };
 
 
-  /// getting all data last seen,last message etc
+  // =====================================================
+  // FETCH DASHBOARD CHAT DATA
+  // =====================================================
+
   useEffect(() => {
-    const fetchDashBoardChats = async () => {
-      try {
-        const response = await fetch(`http://localhost:8081/messages/dashboard/${currentUserId}`);
 
-        const data = await response.json();
-        setDashBoardChats(data);
-      } catch (error) {
-        console.log("error while fetching data", error);
-      }
+    const fetchDashBoardChats =
+      async () => {
 
+        try {
 
+          // Fetch dashboard chat information
+          const response =
+            await fetch(
+              `http://localhost:8081/messages/dashboard/${currentUserId}`
+            );
 
-    }
+          const data =
+            await response.json();
+
+          // Store chat data
+          setDashBoardChats(data);
+
+        } catch (error) {
+
+          console.log(
+            "error while fetching data",
+            error
+          );
+
+        }
+
+      };
+
+    // First fetch
     fetchDashBoardChats();
 
+    // =====================================================
+    // Refresh every 10 seconds
+    // =====================================================
+    const interval =
+      setInterval(() => {
 
-    const interval=setInterval(()=>{
-      fetchDashBoardChats();
-    },10000)
+        fetchDashBoardChats();
 
-    return () => clearInterval(interval);
-  }, [currentUserId])
+      }, 10000);
 
+    // Cleanup interval
+    return () =>
+      clearInterval(interval);
+
+  }, [currentUserId]);
 
 
   // =====================================================
-  // ACCEPT REQUEST
+  // ACCEPT REQUEST FUNCTION
   // =====================================================
- const handleAccept = (senderId) => {
-  fetch(
-    `http://localhost:8081/accept?fromUserId=${senderId}&toUserId=${currentUserId}`,
-    {
-      method: "PUT",
-    }
-  )
-    .then((res) => {
-      if (!res.ok) {
-        throw new Error("Failed to accept request");
+
+  const handleAccept = (user) => {
+
+    const currentUserId = localStorage.getItem("currentUserId");
+
+    const senderId = user.userId;
+    const receiverId = currentUserId;
+
+    fetch(
+      `http://localhost:8081/accept?fromUserId=${senderId}&toUserId=${receiverId}`,
+      {
+        method: "PUT",
       }
+    )
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error("Failed to accept request");
+        }
 
-      // Fetch updated requests after accept
-      return fetch(
-        `http://localhost:8081/interests/AllRequest/${currentUserId}`
-      );
-    })
-    .then((res) => res.json())
-    .then((data) => {
-      setReceivedRequests(data);
-    })
-    .catch((err) => {
-      console.error(err);
-    });
-};
+        // Refresh incoming requests
+        return fetch(
+          `http://localhost:8081/interests/incoming/${currentUserId}`
+        );
+      })
+      .then((res) => res.json())
+      .then((data) => {
 
-useEffect(() => {
-  fetch(`http://localhost:8081/interests/AllRequest/${currentUserId}`)
-    .then(res => res.json())
-    .then(data => setReceivedRequests(data));
-}, []);
+        setIncomingRequest(data);
 
-    
-  
+        // Refresh matches
+        return fetch(
+          `http://localhost:8081/GetMatches/${currentUserId}`
+        );
 
+      })
+      .then((res) => res.json())
+      .then((matchData) => {
+
+        setMatches(matchData);
+
+        alert(`You accepted ${user.name}'s interest ❤️`);
+
+      })
+      .catch((err) => {
+        console.error(err);
+      });
+
+  };// =====================================================
+  // Reject Interest
+  // =====================================================
+  const handleReject = (user) => {
+
+    const currentUserId = localStorage.getItem("currentUserId");
+
+    const senderId = user.userId;
+    const receiverId = currentUserId;
+
+    fetch(
+      `http://localhost:8081/reject?fromUserId=${senderId}&toUserId=${receiverId}`,
+      {
+        method: "PUT",
+      }
+    )
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error("Failed to reject request");
+        }
+
+        // Refresh incoming requests
+        return fetch(
+          `http://localhost:8081/interests/incoming/${currentUserId}`
+        );
+      })
+      .then((res) => res.json())
+      .then((data) => {
+
+        setIncomingRequest(data);
+
+        // Refresh matches
+        return fetch(
+          `http://localhost:8081/GetMatches/${currentUserId}`
+        );
+
+      })
+      .then((res) => res.json())
+      .then((matchData) => {
+
+        setMatches(matchData);
+
+        alert(`You rejected ${user.name}'s interest.`);
+
+      })
+      .catch((err) => {
+        console.error(err);
+      });
+
+  };
+
+  // =====================================================
+  // LOAD ALL RECEIVED REQUESTS
+  // =====================================================
+
+  useEffect(() => {
+
+    fetch(
+      `http://localhost:8081/interests/AllRequest/${currentUserId}`
+    )
+      .then(res => res.json())
+      .then(data => {
+
+        console.log("API Response:", data);
+
+        setReceivedRequests(data);
+
+      });
+
+  }, []);
+
+  useEffect(() => {
+
+    console.log(
+      "receivedRequests updated:",
+      receivedRequests
+    );
+
+  }, [receivedRequests]);
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-100">
 
@@ -552,8 +852,8 @@ useEffect(() => {
 
                         <div
                           className={`w-3 h-3 rounded-full ${isOnline
-                              ? "bg-green-500"
-                              : "bg-gray-400"
+                            ? "bg-green-500"
+                            : "bg-gray-400"
                             }`}
                         ></div>
 
@@ -672,54 +972,59 @@ useEffect(() => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
-              {incomingRequest.map((user) => (
+              {incomingRequest.map((user) => {
 
-                <div
-                  key={user.id}
-                  className="bg-white rounded-3xl overflow-hidden shadow-lg border border-pink-100 hover:shadow-2xl hover:-translate-y-2 transition-all duration-300"
-                >
+                console.log("Incoming User:", user);
 
-                  <img
-                    src={`https://i.pravatar.cc/300?img=${user.id}`}
-                    alt={user.name}
-                    className="w-full h-56 object-cover"
-                  />
+                return (
+                  <div
+                    key={user.id}
+                    className="bg-white rounded-3xl overflow-hidden shadow-lg border border-pink-100 hover:shadow-2xl hover:-translate-y-2 transition-all duration-300"
+                  >
 
-                  <div className="p-5">
+                    <img
+                      src={`https://i.pravatar.cc/300?img=${user.id}`}
+                      alt={user.name}
+                      className="w-full h-56 object-cover"
+                    />
 
-                    <h4 className="text-xl font-bold text-gray-800">
-                      {user.name}
-                    </h4>
+                    <div className="p-5">
 
-                    <p className="text-gray-500 mt-2">
-                      🎂 {user.age} • 📍 {user.city}
-                    </p>
+                      <h4 className="text-xl font-bold text-gray-800">
+                        {user.name}
+                      </h4>
 
-                    <p className="text-gray-600 mt-3">
-                      {user.bio}
-                    </p>
+                      <p className="text-gray-500 mt-2">
+                        🎂 {user.age} • 📍 {user.city}
+                      </p>
 
-                    <div className="flex gap-3 mt-5">
+                      <p className="text-gray-600 mt-3">
+                        {user.bio}
+                      </p>
 
-                      <button
-                        onClick={() =>
-                          handleAccept(user.id)
-                        }
-                        className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white py-2 rounded-xl hover:scale-105 transition-all duration-300 shadow-lg"
-                      >
-                        Accept ❤️
-                      </button>
+                      <div className="flex gap-3 mt-5">
 
-                      <button className="w-full bg-gray-200 text-gray-700 py-2 rounded-xl hover:bg-gray-300 transition">
-                        Ignore ❌
-                      </button>
+                        <button
+                          onClick={() => handleAccept(user)}
+                          className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white py-2 rounded-xl hover:scale-105 transition-all duration-300 shadow-lg"
+                        >
+                          Accept ❤️
+                        </button>
+
+                        <button
+                          onClick={() => handleReject(user)}
+                          className="w-full bg-gray-200 text-gray-700 py-2 rounded-xl hover:bg-gray-300 transition">
+                          Ignore ❌
+                        </button>
+
+                      </div>
 
                     </div>
 
                   </div>
+                );
 
-                </div>
-              ))}
+              })}
 
             </div>
           )}
@@ -733,8 +1038,9 @@ useEffect(() => {
       </button>
 
     </div>
-    
+
   );
 
 }
 export default Dashboard;
+
