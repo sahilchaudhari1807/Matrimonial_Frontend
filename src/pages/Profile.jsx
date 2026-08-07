@@ -55,7 +55,7 @@ fetch(
   }
 )
 .then((res) => {
-  console.log("Status:", res.status);
+ // console.log("Status:", res.status);
   return res.json();
 })
 .then((data) => {

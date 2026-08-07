@@ -120,7 +120,7 @@ function Matches() {
       .then((res) => res.json())
       .then((profiles) => {
 
-        console.log("Profiles:", profiles);
+      //  console.log("Profiles:", profiles);
 
         setMatches(profiles);
 

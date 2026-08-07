@@ -1,17 +1,18 @@
-/*This component does 6 main things:
+/*This component does  main things:
 
-Loads messages every 2 seconds.
+
 Sends messages to backend.
 Marks messages as seen when chat opens.
 Shows online/last seen status every 3 seconds.
 Auto scrolls to latest message.
-Tracks typing state using setTimeout().*/ 
+Tracks typing state using setTimeout().*/
 
 // Import React hooks
 import React, { useEffect, useState, useRef } from "react";
 
 // Import location for receiving user data from previous page
 import { useLocation } from "react-router-dom";
+import { connect, sendMessage, disconnect } from "../services/WebSocket";
 
 function Chat() {
 
@@ -39,6 +40,8 @@ function Chat() {
     location.state ||
     JSON.parse(localStorage.getItem("chatUser"));
 
+  
+
   // Used for auto scrolling
   const bottomRef = useRef(null);
 
@@ -50,7 +53,7 @@ function Chat() {
 
   // Receiver user id
   const otherId =
-    user ? Number(user.id) : null;
+    user ? Number(user.userId) : null;
 
   // Create unique chat id
   // Example:
@@ -59,20 +62,99 @@ function Chat() {
   const chatId =
     otherId !== null
       ? (
-          myID < otherId
-            ? `${myID}_${otherId}`
-            : `${otherId}_${myID}`
-        )
+        myID < otherId
+          ? `${myID}_${otherId}`
+          : `${otherId}_${myID}`
+      )
       : null;
+
 
   // Store all messages
   const [messages, setMessages] = useState([]);
 
+  function receiveMessage(chatMessage) {
+
+    // Ignore messages from other chats
+    if (chatMessage.chatId !== chatId) {
+      return;
+    }
+
+    setMessages((prev) => {
+
+      // Prevent duplicate messages
+      if (prev.some(msg => msg.id === chatMessage.id)) {
+        return prev;
+      }
+
+      return [...prev, chatMessage];
+
+    });
+
+   if (
+    String(chatMessage.receiverId) === String(currentUserId) &&
+    chatMessage.seen === false
+) {
+
+   
+
+    markMessagesSeen();
+
+}
+  }
+  useEffect(() => {
+
+
+
+    connect(receiveMessage, receiveSeenMessage,receiveUpdateStatus);
+
+    return () => {
+
+      console.log("cleanup executed");
+
+      disconnect();
+
+    };
+
+  }, []);
+
+
+  // ======================================================
+  // Updates the seen status of existing messages received
+  // from the WebSocket without adding duplicate messages.
+  // ======================================================
+  // Update the seen status of messages received from WebSocket
+  function receiveSeenMessage(updatedMessages) {
+
+    if (updatedMessages.length === 0) {
+        return;
+    }
+
+    setMessages((previousMessages) => {
+
+        return previousMessages.map((msg) => {
+
+            const updatedMessage = updatedMessages.find(
+                updated => updated.id === msg.id
+            );
+
+            return updatedMessage ? updatedMessage : msg;
+
+        });
+
+    });
+
+}
+
+
+
   // ===================================
   // MARK MESSAGES AS SEEN
   // ===================================
-  const markMessageasSeen = async () => {
-
+  const markMessagesSeen = async () => {
+    console.log(
+      "markMessagesSeen()"
+     
+    );
     try {
 
       await fetch(
@@ -97,9 +179,7 @@ function Chat() {
   // ===================================
   useEffect(() => {
 
-    if (!user) {
-      return;
-    }
+    if (!user) return;
 
     const fetchMessages = async () => {
 
@@ -109,41 +189,33 @@ function Chat() {
           `http://localhost:8081/messages/${chatId}`
         );
 
-        const data =
-          await response.json();
+        const data = await response.json();
 
         setMessages(data);
 
+        const hasUnread = data.some(
+    msg =>
+        String(msg.receiverId) === String(currentUserId) &&
+        msg.seen === false
+);
+
+if (hasUnread) {
+    await markMessagesSeen();
+}
+
       } catch (error) {
 
-        console.log(
-          "Error fetching messages",
-          error
-        );
+        console.log(error);
 
       }
+
     };
 
-    // Load messages immediately
     fetchMessages();
 
-    // Mark messages as seen
-    markMessageasSeen();
+  }, [chatId, currentUserId]);
 
-    // Poll every 2 seconds
-    const interval = setInterval(() => {
-
-      fetchMessages();
-
-    }, 2000);
-
-    return () => {
-
-      clearInterval(interval);
-
-    };
-
-  }, [user, chatId]);
+  
 
   // ===================================
   // AUTO SCROLL TO LATEST MESSAGE
@@ -159,69 +231,36 @@ function Chat() {
   // ===================================
   // SEND MESSAGE
   // ===================================
-  const handleSend = async () => {
+  const handleSend = () => {
 
     // Prevent empty message
     if (input.trim() === "") return;
 
     // Create message object
     const newMessage = {
-
       chatId: chatId,
-
-      senderId:
-        Number(currentUserId),
-
-      receiverId:
-        Number(user.id),
-
-      text: input,
+      senderId: Number(currentUserId),
+      receiverId: Number(user.userId),
+      content: input,
     };
 
-    console.log(newMessage);
+
+
 
     try {
 
-      // Send message to backend
-      const response = await fetch(
-        "http://localhost:8081/messages/message",
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-
-          body: JSON.stringify(
-            newMessage
-          ),
-        }
-      );
-
-      // Saved message from backend
-      const savedMessage =
-        await response.json();
-
-      // Add message to UI
-      setMessages((prev) => [
-        ...prev,
-        savedMessage,
-      ]);
+      // Send message through WebSocket
+      sendMessage(newMessage);
 
       // Clear textbox
       setInput("");
 
     } catch (error) {
 
-      console.log(
-        "Error sending message",
-        error
-      );
+      console.log("Error sending message", error);
 
     }
   };
-
   // ===================================
   // HANDLE TYPING
   // ===================================
@@ -261,6 +300,21 @@ function Chat() {
   // ===================================
   // FETCH ONLINE / LAST SEEN STATUS
   // ===================================
+
+  function receiveUpdateStatus(updatedStatus) {
+
+    console.log("Received Status:", updatedStatus);
+
+    // Ignore updates for users other than the one whose chat is open
+    if (String(updatedStatus.userId) !== String(user.userId)) {
+        return;
+    }
+
+    console.log("Updating Chat Header");
+
+    // Update React state
+    setUserStatus(updatedStatus);
+}
   useEffect(() => {
 
     const fetchStatus = async () => {
@@ -269,8 +323,11 @@ function Chat() {
 
         const response =
           await fetch(
-            `http://localhost:8081/status/${user.id}`
+            //  `http://localhost:8081/status/${user.id}`
+            `http://localhost:8081/status/${user.userId}`
           );
+
+
 
         const status =
           await response.json();
@@ -285,23 +342,12 @@ function Chat() {
     };
 
     // Load status immediately
+    console.log("Status useEffect executed from chat page");
     fetchStatus();
 
-    // Refresh every 3 seconds
-    const interval =
-      setInterval(() => {
 
-        fetchStatus();
 
-      }, 3000);
-
-    return () => {
-
-      clearInterval(interval);
-
-    };
-
-  }, [user.id]);
+  }, [user.userId]);
 
   // If no user selected
   if (!user) return null;
@@ -335,21 +381,20 @@ function Chat() {
 
               ? "Online"
 
-              : `Last seen ${
-                  userStatus?.lastSeen
+              : `Last seen ${userStatus?.lastSeen
 
-                    ? new Date(
-                        userStatus.lastSeen
-                      ).toLocaleTimeString(
-                        [],
-                        {
-                          hour: "2-digit",
-                          minute: "2-digit"
-                        }
-                      )
+                ? new Date(
+                  userStatus.lastSeen
+                ).toLocaleTimeString(
+                  [],
+                  {
+                    hour: "2-digit",
+                    minute: "2-digit"
+                  }
+                )
 
-                    : "recently"
-                }`
+                : "recently"
+              }`
             }
 
           </span>
@@ -364,7 +409,11 @@ function Chat() {
 
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2">
 
-        {messages.map((msg, index) => {
+        {messages.map((msg,) => {
+
+          if (msg.id === 83) {
+            console.log(msg);
+          }
 
           // Check if message belongs to me
           const isMe =
@@ -374,21 +423,21 @@ function Chat() {
           return (
 
             <div
-              key={index}
+              // key={index}
+              key={msg.id}
               className={`max-w-[60%] px-3 py-2 rounded-lg text-sm
 
-              ${
-                isMe
+              ${isMe
                   ? "bg-blue-500 text-white self-end"
                   : "bg-gray-300 text-black self-start"
-              }`}
+                }`}
             >
 
               <div className="flex flex-col">
 
                 {/* Message text */}
                 <span>
-                  {msg.text}
+                  {msg.content}
                 </span>
 
                 {/* Time + Seen status */}
@@ -397,9 +446,9 @@ function Chat() {
                   {/* Message time */}
                   <span>
 
-                    {msg.time &&
+                    {msg.timestamp &&
                       new Date(
-                        msg.time
+                        msg.timestamp
                       ).toLocaleTimeString(
                         [],
                         {
@@ -411,19 +460,21 @@ function Chat() {
                   </span>
 
                   {/* Show tick only for my messages */}
+
+                  {/* Show Seen Status (Debug Version) */}
                   {isMe && (
 
-                    msg.seen === false
+                    <>
 
-                      ? (
-                        // Single Tick
+
+
+                      {msg.seen === false ? (
                         <span>✓</span>
-                      )
-
-                      : (
-                        // Double Tick
+                      ) : (
                         <span>✓✓</span>
-                      )
+                      )}
+
+                    </>
 
                   )}
 

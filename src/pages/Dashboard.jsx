@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 
 // React Hooks
 import { useEffect, useState } from "react";
+import { connect, disconnect } from "../services/WebSocket";
 
 function Dashboard({ setToken }) {
 
@@ -56,6 +57,10 @@ function Dashboard({ setToken }) {
   const currentUserId =
     localStorage.getItem("currentUserId");
 
+  const [userStatus, setUserStatus] = useState(null);
+
+
+
   // =====================================================
   // FETCH ALL USER PROFILES
   // Runs only once when component loads
@@ -74,6 +79,8 @@ function Dashboard({ setToken }) {
       .catch((err) => console.log(err));
 
   }, []);
+
+
 
   // =====================================================
   // FIND CURRENT USER PROFILE
@@ -99,19 +106,13 @@ function Dashboard({ setToken }) {
 
   console.log(profiles.map(p => p.id));
 
-  console.log("currentUserId", currentUserId);
-  console.log("profiles", profiles);
 
-  console.log("currentUser", currentUser);
 
   // =====================================================
   // REDIRECT LOGIC
   // =====================================================
   useEffect(() => {
 
-    console.log("currentUserId:", currentUserId);
-
-    console.log("currentUser:", currentUser);
 
     // If no user is logged in
     // send user back to login page
@@ -140,10 +141,7 @@ function Dashboard({ setToken }) {
   // =====================================================
   useEffect(() => {
 
-    console.log(
-      "currentUserId:",
-      localStorage.getItem("currentUserId")
-    );
+
 
 
     // Call backend API
@@ -214,15 +212,7 @@ function Dashboard({ setToken }) {
     // =====================================================
     const updateOnlineStatus = async () => {
 
-      console.log(
-        "currentUserId:",
-        currentUserId
-      );
 
-      console.log(
-        "Number:",
-        Number(currentUserId)
-      );
 
       try {
 
@@ -235,15 +225,7 @@ function Dashboard({ setToken }) {
           }
         );
 
-        console.log(
-          "Status Code:",
-          response.status
-        );
 
-        console.log(
-          "Response:",
-          await response.text()
-        );
 
       } catch (error) {
 
@@ -261,15 +243,7 @@ function Dashboard({ setToken }) {
     // =====================================================
     const handleOffline = async () => {
 
-      console.log(
-        "currentUserId:",
-        currentUserId
-      );
 
-      console.log(
-        "Number:",
-        Number(currentUserId)
-      );
 
       try {
 
@@ -326,44 +300,78 @@ function Dashboard({ setToken }) {
 
   useEffect(() => {
 
+    console.log("======================================");
+    console.log("ONLINE STATUS useEffect STARTED");
+    console.log("Dashboard Chats:", dashBoardChats);
+    console.log("======================================");
+
+    if (dashBoardChats.length === 0) {
+      console.log("No dashboard chats found.");
+      return;
+    }
+
     const fetchOnlineUsers = async () => {
 
-      // Loop through all dashboard chats
+      console.log("fetchOnlineUsers() called");
+
+      const statuses = {};
+
       for (const chat of dashBoardChats) {
 
-        // Get status of each user
-        const response = await fetch(
-          `http://localhost:8081/status/${chat.otherUserId}`
-        );
+        console.log("--------------------------------------");
+        console.log("Checking User:", chat.otherUserId);
 
-        const statusData =
-          await response.json();
+        try {
 
-        // Store status in state
-        setUserStatuses((prev) => ({
-          ...prev,
-          [chat.otherUserId]: statusData
-        }));
+          console.log(
+            "Calling API:",
+            `http://localhost:8081/status/${chat.otherUserId}`
+          );
+
+          const response = await fetch(
+            `http://localhost:8081/status/${chat.otherUserId}`
+          );
+
+          console.log(
+            "Response Status:",
+            response.status
+          );
+
+          const statusData = await response.json();
+
+          console.log(
+            "Status Received:",
+            statusData
+          );
+
+          statuses[chat.otherUserId] = statusData;
+
+        } catch (error) {
+
+          console.log(
+            "Error fetching status for",
+            chat.otherUserId,
+            error
+          );
+
+        }
 
       }
 
+
+
+      setUserStatuses(statuses);
+
     };
 
-    // First fetch
     fetchOnlineUsers();
 
-    // Refresh every 3 seconds
-    const interval = setInterval(() => {
-
-      fetchOnlineUsers();
-
-    }, 3000);
-
-    // Cleanup interval
-    return () =>
-      clearInterval(interval);
-
   }, [dashBoardChats]);
+
+  // =====================================================
+  // CHECK WHETHER STATE IS UPDATED
+  // =====================================================
+
 
 
   // =====================================================
@@ -425,6 +433,57 @@ function Dashboard({ setToken }) {
   // =====================================================
   // FETCH DASHBOARD CHAT DATA
   // =====================================================
+  function receiveMessage(chatMessage) {
+
+    setDashBoardChats((previousChats) => {
+
+      // Find the chat that received the new message
+      const existingChat = previousChats.find(
+        (chat) => chat.chatId === chatMessage.chatId
+      );
+
+      // If chat doesn't exist, do nothing for now
+      if (!existingChat) {
+        return previousChats;
+      }
+
+      // Create updated chat
+      const updatedChat = {
+
+        ...existingChat,
+
+        lastMessage: chatMessage.content,
+
+        lastMessageTime: chatMessage.timestamp,
+
+        unreadCount:
+          String(chatMessage.receiverId) === String(currentUserId)
+            ? existingChat.unreadCount + 1
+            : existingChat.unreadCount
+
+      };
+
+      // Keep all other chats
+      const remainingChats = previousChats.filter(
+        (chat) => chat.chatId !== chatMessage.chatId
+      );
+
+      // Move updated chat to top
+      return [updatedChat, ...remainingChats];
+
+    });
+
+  }
+
+
+  useEffect(() => {
+    connect(receiveMessage, () => { });
+
+    return () => {
+      disconnect();
+    };
+
+  }, []);
 
   useEffect(() => {
 
@@ -459,19 +518,7 @@ function Dashboard({ setToken }) {
     // First fetch
     fetchDashBoardChats();
 
-    // =====================================================
-    // Refresh every 10 seconds
-    // =====================================================
-    const interval =
-      setInterval(() => {
 
-        fetchDashBoardChats();
-
-      }, 10000);
-
-    // Cleanup interval
-    return () =>
-      clearInterval(interval);
 
   }, [currentUserId]);
 
@@ -804,25 +851,27 @@ function Dashboard({ setToken }) {
                   dashBoardChats.find(
                     (chat) =>
                       String(chat.otherUserId) ===
-                      String(user.id)
+                      String(user.userId)
                   );
 
                 // 🔹 Online status
-                const status =
-                  userStatuses[user.id];
 
-                const isOnline =
-                  status?.online;
+
+                const status =
+                  userStatuses[user.userId];
+
+                /* const isOnline =
+                   status?.online;*/
 
                 return (
 
                   <div
-                    key={user.id}
+                    key={user.userId}
                     className="bg-white rounded-3xl overflow-hidden shadow-lg border border-pink-100 hover:shadow-2xl hover:-translate-y-2 transition-all duration-300"
                   >
 
                     <img
-                      src={`https://i.pravatar.cc/300?img=${user.id}`}
+                      src={`https://i.pravatar.cc/300?img=${user.userId}`}
                       alt={user.name}
                       className="w-full h-56 object-cover"
                     />
@@ -847,32 +896,19 @@ function Dashboard({ setToken }) {
                         🎂 {user.age} • 📍 {user.city}
                       </p>
 
-                      {/* 🔹 Online Status */}
-                      <div className="flex items-center gap-2 mt-3">
-
-                        <div
-                          className={`w-3 h-3 rounded-full ${isOnline
-                            ? "bg-green-500"
-                            : "bg-gray-400"
-                            }`}
-                        ></div>
+                      {/* 🔹 Last Seen */}
+                      <div className="mt-3">
 
                         <span className="text-sm text-gray-500">
 
-                          {isOnline
-
-                            ? "Online"
-
-                            : status?.lastSeen
-
-                              ? `Last seen ${new Date(
-                                status.lastSeen
-                              ).toLocaleTimeString([], {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}`
-
-                              : "Offline"}
+                          {status?.lastSeen
+                            ? `Last seen ${new Date(
+                              status.lastSeen
+                            ).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}`
+                            : "No activity yet"}
 
                         </span>
 

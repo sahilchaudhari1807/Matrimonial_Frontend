@@ -9,6 +9,7 @@ import ProfileView from "./pages/ProfileView";
 import Chat from "./pages/Chat";
 
 
+
 function App() {
   const [token,setToken] = useState(localStorage.getItem("token")); // ✅ important
  
@@ -41,6 +42,10 @@ function App() {
         <Route path="/profile/:id" element={<ProfileView />} />
 
         <Route path="/chat" element={<Chat/>}/>
+
+       
+        {/* <Route path="/testChat" element={<TestChat/>}/> */}
+
 
       </Routes>
     </BrowserRouter>
