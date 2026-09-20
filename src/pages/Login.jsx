@@ -15,71 +15,76 @@ function Login({ setToken }) {
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  try {
+    try {
 
-    const res = await loginUser(form);
+      const res = await loginUser(form);
 
-    console.log(res.data);
+      console.log(res.data);
 
-    if (res.data && res.data.token) {
+      if (res.data && res.data.token) {
 
-      localStorage.setItem("token", res.data.token);
-      setToken(res.data.token);
+        localStorage.setItem("token", res.data.token);
+        setToken(res.data.token);
 
-      localStorage.setItem(
-        "currentUserId",
-        res.data.id
-      );
-
-      const userIdCurrent =
-        localStorage.getItem("currentUserId");
-
-      try {
-
-        const profileRes = await fetch(
-          `http://localhost:8081/users/${userIdCurrent}`
+        localStorage.setItem(
+          "currentUserId",
+          res.data.id
         );
 
-        const userProfile =
-          await profileRes.json();
+        const userIdCurrent =
+          localStorage.getItem("currentUserId");
 
-        console.log(
-          "userProfile =",
-          userProfile
-        );
+        try {
 
-        if (userProfile) {
-          navigate("/dashboard");
-        } else {
+          const profileRes = await fetch(
+            `http://localhost:8081/users/${userIdCurrent}`,
+            {
+              headers: {
+                Authorization: `Bearer ${res.data.token}`
+              }
+            }
+          );
+
+          const userProfile =
+            await profileRes.json();
+
+          console.log(
+            "userProfile =",
+            userProfile
+          );
+
+          if (userProfile) {
+            navigate("/dashboard");
+          } else {
+            navigate("/profile");
+          }
+
+        } catch (err) {
+
+          console.log(err);
           navigate("/profile");
+
         }
 
-      } catch (err) {
+      } else {
 
-        console.log(err);
-        navigate("/profile");
+        alert("Invalid response from server");
 
       }
 
-    } else {
+    } catch (err) {
 
-      alert("Invalid response from server");
+      console.log(err);
+
+      alert(
+        err.response?.data?.message ||
+        "Login Failed"
+      );
 
     }
-
-  } catch (err) {
-
-    console.log(err);
-
-    alert(
-      err.response?.data?.message ||
-      "Login Failed"
-    );
-
-  }
-};
+  };
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
@@ -117,6 +122,6 @@ function Login({ setToken }) {
       </form>
     </div>
   );
-} 
+}
 
 export default Login;

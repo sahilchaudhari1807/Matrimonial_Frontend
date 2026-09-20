@@ -19,6 +19,9 @@ function Matches() {
       `http://localhost:8081/send?fromUserId=${currentUserId}&toUserId=${user.userId}`,
       {
         method: "POST",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`
+        }
       }
     )
       .then((res) => {
@@ -29,7 +32,11 @@ function Matches() {
         alert(`Interest sent to ${user.name} ❤️`);
 
         return fetch(
-          `http://localhost:8081/interests/profiles/${currentUserId}`
+          `http://localhost:8081/interests/profiles/${currentUserId}`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`
+          }
+        }
         );
       })
       .then((res) => res.json())
@@ -55,6 +62,9 @@ function Matches() {
       `http://localhost:8081/accept?fromUserId=${senderId}&toUserId=${receiverId}`,
       {
         method: "PUT",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`
+        }
       }
     )
       .then((res) => {
@@ -63,7 +73,11 @@ function Matches() {
         }
 
         return fetch(
-          `http://localhost:8081/interests/profiles/${currentUserId}`
+          `http://localhost:8081/interests/profiles/${currentUserId}`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`
+          }
+        }
         );
       })
       .then((res) => res.json())
@@ -90,6 +104,9 @@ function Matches() {
       `http://localhost:8081/reject?fromUserId=${senderId}&toUserId=${receiverId}`,
       {
         method: "PUT",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`
+        }
       }
     )
       .then((res) => {
@@ -98,7 +115,11 @@ function Matches() {
         }
 
         return fetch(
-          `http://localhost:8081/interests/profiles/${currentUserId}`
+          `http://localhost:8081/interests/profiles/${currentUserId}`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`
+          }
+        }
         );
       })
       .then((res) => res.json())
@@ -116,11 +137,15 @@ function Matches() {
     /* fetch("http://localhost:8081/users")*/
     const currentUserId = localStorage.getItem("currentUserId");
 
-    fetch(`http://localhost:8081/interests/profiles/${currentUserId}`)
+    fetch(`http://localhost:8081/interests/profiles/${currentUserId}`, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`
+      }
+    })
       .then((res) => res.json())
       .then((profiles) => {
 
-      //  console.log("Profiles:", profiles);
+        //  console.log("Profiles:", profiles);
 
         setMatches(profiles);
 

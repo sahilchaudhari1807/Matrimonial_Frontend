@@ -12,7 +12,7 @@ import React, { useEffect, useState, useRef } from "react";
 
 // Import location for receiving user data from previous page
 import { useLocation } from "react-router-dom";
-import { connect, sendMessage, disconnect } from "../services/WebSocket";
+import { connect, sendMessage, sendTypingStatus, disconnect } from "../services/WebSocket";
 
 function Chat() {
 
@@ -20,7 +20,7 @@ function Chat() {
   const location = useLocation();
 
   // Store users who are currently typing
-  const [typingUsers, setTypingUsers] = useState({});
+  // const [typingUsers, setTypingUsers] = useState({});
 
   // Store current message input
   const [input, setInput] = useState("");
@@ -40,7 +40,7 @@ function Chat() {
     location.state ||
     JSON.parse(localStorage.getItem("chatUser"));
 
-  
+  const [isTyping, setIsTyping] = useState(false);
 
   // Used for auto scrolling
   const bottomRef = useRef(null);
@@ -90,22 +90,42 @@ function Chat() {
 
     });
 
-   if (
-    String(chatMessage.receiverId) === String(currentUserId) &&
-    chatMessage.seen === false
-) {
+    console.log("Receiver ID:", chatMessage.receiverId);
+    console.log("Current User ID:", currentUserId);
 
-   
+    if (
+      String(chatMessage.receiverId) === String(currentUserId)
 
-    markMessagesSeen();
+    ) {
 
-}
+
+
+
+      console.log("✅ I am receiver");
+      console.log("📨 Message ID:", chatMessage.id);
+      markMessagesAsDelivered(chatMessage.id);
+
+    }
+  }
+
+  /*function receiveTypingStatus(updatedTypingStatus) {
+
+  console.log("Typing status received:", updatedTypingStatus);
+
+}*/
+  function receiveTypingStatus(updatedTypingStatus) {
+
+    if (String(updatedTypingStatus.senderId) !== String(user.userId)) {
+      return;
+    }
+
+    setIsTyping(updatedTypingStatus.typing);
   }
   useEffect(() => {
 
 
 
-    connect(receiveMessage, receiveSeenMessage,receiveUpdateStatus);
+    connect(receiveMessage, receiveSeenMessage, receiveUpdateStatus, receiveTypingStatus, receiveDeliveredStatus);
 
     return () => {
 
@@ -125,26 +145,43 @@ function Chat() {
   // Update the seen status of messages received from WebSocket
   function receiveSeenMessage(updatedMessages) {
 
+    console.log("Seen status received:", updatedMessages);
+
     if (updatedMessages.length === 0) {
-        return;
+      return;
     }
 
     setMessages((previousMessages) => {
 
-        return previousMessages.map((msg) => {
+      console.log("BEFORE SEEN UPDATE:", previousMessages);
 
-            const updatedMessage = updatedMessages.find(
-                updated => updated.id === msg.id
-            );
+      return previousMessages.map((msg) => {
 
-            return updatedMessage ? updatedMessage : msg;
+        const updatedMessage = updatedMessages.find(
+          updated => updated.id === msg.id
+        );
 
-        });
+        if (!updatedMessage) {
+          return msg;
+        }
 
+        console.log(
+          "Updating message:",
+          msg.id,
+          "delivered:",
+          msg.delivered,
+          "seen:",
+          updatedMessage.seen
+        );
+
+        return {
+          ...msg,
+            delivered: updatedMessage.delivered,
+          seen: updatedMessage.seen
+        };
+      });
     });
-
-}
-
+  }
 
 
   // ===================================
@@ -153,14 +190,18 @@ function Chat() {
   const markMessagesSeen = async () => {
     console.log(
       "markMessagesSeen()"
-     
+
     );
     try {
 
       await fetch(
         `http://localhost:8081/messages/seen/${chatId}/${currentUserId}`,
         {
-          method: "PUT"
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`
+
+          }
         }
       );
 
@@ -174,6 +215,53 @@ function Chat() {
     }
   };
 
+
+  // ===================================
+  // MARK MESSAGES AS DELIVERED
+  // ===================================
+  const markMessagesAsDelivered = async (messageId) => {
+
+    console.log("markMessagesAsDelivered()", messageId);
+
+    try {
+
+      await fetch(
+        `http://localhost:8081/messages/delivered/${messageId}`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`
+          }
+        }
+      );
+
+    } catch (error) {
+
+      console.log(
+        "error updating Delivered status",
+        error
+      );
+
+    }
+  };
+
+  function receiveDeliveredStatus(updatedMessage) {
+
+    console.log("Delivered status received:", updatedMessage);
+
+    setMessages((previousMessages) => {
+
+      return previousMessages.map((msg) => {
+
+        if (msg.id === updatedMessage.id) {
+          return updatedMessage;
+        }
+
+        return msg;
+      });
+
+    });
+  }
   // ===================================
   // LOAD CHAT MESSAGES
   // ===================================
@@ -186,22 +274,28 @@ function Chat() {
       try {
 
         const response = await fetch(
-          `http://localhost:8081/messages/${chatId}`
+          `http://localhost:8081/messages/${chatId}`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`
+          }
+        }
         );
-
+        if (!response.ok) {
+          throw new Error(`Request failed: ${response.status}`);
+        }
         const data = await response.json();
 
         setMessages(data);
 
         const hasUnread = data.some(
-    msg =>
-        String(msg.receiverId) === String(currentUserId) &&
-        msg.seen === false
-);
+          msg =>
+            String(msg.receiverId) === String(currentUserId) &&
+            msg.seen === false
+        );
 
-if (hasUnread) {
-    await markMessagesSeen();
-}
+        if (hasUnread) {
+          await markMessagesSeen();
+        }
 
       } catch (error) {
 
@@ -215,7 +309,7 @@ if (hasUnread) {
 
   }, [chatId, currentUserId]);
 
-  
+
 
   // ===================================
   // AUTO SCROLL TO LATEST MESSAGE
@@ -266,35 +360,36 @@ if (hasUnread) {
   // ===================================
   const handleTyping = (e) => {
 
-    // Update textbox
+    // 1. Update textbox
     setInput(e.target.value);
 
-    // Mark current user as typing
-    setTypingUsers((prev) => ({
-      ...prev,
-      [chatId]: currentUserId
-    }));
+    // 2. Create typing status
 
-    // Reset timer
+    const typingStatus = {
+      senderId: Number(currentUserId),
+      receiverId: Number(user.userId),
+      typing: true
+    };
+
+
+    // 3. Send typing status
+    sendTypingStatus(typingStatus);
+
+    // 4. Reset previous timer
     clearTimeout(timerRef.current);
 
-    // Remove typing status after 2 sec
-    timerRef.current =
-      setTimeout(() => {
+    // 5. After 2 seconds, tell receiver typing stopped
+    timerRef.current = setTimeout(() => {
 
-        setTypingUsers((prev) => {
+      const typingStopped = {
+        senderId: Number(currentUserId),
+        receiverId: Number(user.userId),
+        typing: false
+      };
 
-          const updated = {
-            ...prev
-          };
+      sendTypingStatus(typingStopped);
 
-          delete updated[chatId];
-
-          return updated;
-
-        });
-
-      }, 2000);
+    }, 2000);
   };
 
   // ===================================
@@ -307,14 +402,14 @@ if (hasUnread) {
 
     // Ignore updates for users other than the one whose chat is open
     if (String(updatedStatus.userId) !== String(user.userId)) {
-        return;
+      return;
     }
 
     console.log("Updating Chat Header");
 
     // Update React state
     setUserStatus(updatedStatus);
-}
+  }
   useEffect(() => {
 
     const fetchStatus = async () => {
@@ -323,14 +418,22 @@ if (hasUnread) {
 
         const response =
           await fetch(
-            //  `http://localhost:8081/status/${user.id}`
-            `http://localhost:8081/status/${user.userId}`
+
+            `http://localhost:8081/status/${user.userId}`, {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`
+            }
+          }
           );
 
 
-
+        if (!response.ok) {
+          throw new Error(`Request failed: ${response.status}`);
+        }
         const status =
           await response.json();
+
+          console.log("STATUS FROM API:", status);
 
         setUserStatus(status);
 
@@ -374,30 +477,23 @@ if (hasUnread) {
             {user?.username}
           </span>
 
-          {/* Online / Last Seen */}
-          <span className="text-xs text-gray-500">
-
-            {userStatus?.online
-
-              ? "Online"
-
-              : `Last seen ${userStatus?.lastSeen
-
-                ? new Date(
-                  userStatus.lastSeen
-                ).toLocaleTimeString(
-                  [],
-                  {
+          {isTyping ? (
+            <span className="text-xs text-gray-500">
+              {user.username} is typing...
+            </span>
+          ) : (
+            <span className="text-xs text-gray-500">
+              {userStatus?.online
+                ? "Online"
+                : `Last seen ${userStatus?.lastSeen
+                  ? new Date(userStatus.lastSeen).toLocaleTimeString([], {
                     hour: "2-digit",
-                    minute: "2-digit"
-                  }
-                )
-
-                : "recently"
-              }`
-            }
-
-          </span>
+                    minute: "2-digit",
+                  })
+                  : "recently"
+                }`}
+            </span>
+          )}
 
         </div>
 
@@ -411,9 +507,9 @@ if (hasUnread) {
 
         {messages.map((msg,) => {
 
-          if (msg.id === 83) {
-            console.log(msg);
-          }
+          /*  if (msg.id === 83) {
+              console.log(msg);
+            }*/
 
           // Check if message belongs to me
           const isMe =
@@ -468,11 +564,14 @@ if (hasUnread) {
 
 
 
-                      {msg.seen === false ? (
+                      {!msg.delivered ? (
                         <span>✓</span>
-                      ) : (
+                      ) : !msg.seen ? (
                         <span>✓✓</span>
+                      ) : (
+                        <span className="text-cyan-300 opacity-100">✓✓</span>
                       )}
+
 
                     </>
 

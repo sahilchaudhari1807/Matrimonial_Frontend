@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { registerUser } from "../api/authApi";
-import {useNavigate,Link} from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 
 function Register({ setPage }) {
 
-  const navigate=useNavigate();
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     username: "",
     password: ""
@@ -14,23 +14,23 @@ function Register({ setPage }) {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
- const handleSubmit = async (e) => {
-  e.preventDefault();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-  try {
-    const res = await registerUser(form);
-    //const userId=res.data.id;
-   
-   
-     console.log(res.data);
+    try {
+      const res = await registerUser(form);
+      //const userId=res.data.id;
+
+
+      console.log(res.data);
 
       navigate("/login");
-    
 
-  } catch (err) {
-    console.log(err);
-  }
-};
+
+    } catch (err) {
+      console.log(err);
+    }
+  };
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
@@ -63,7 +63,7 @@ function Register({ setPage }) {
 
         <p className="text-center mt-4 text-sm">
           Already have an account?{" "}
-       <Link to="/login" className="text-blue-500 hover:underline">
+          <Link to="/login" className="text-blue-500 hover:underline">
             Login
           </Link>
         </p>
@@ -73,3 +73,19 @@ function Register({ setPage }) {
 }
 
 export default Register;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

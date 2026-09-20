@@ -1,53 +1,76 @@
-import {useState} from "react";
+import { useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
-import Matches from "./pages/Matches"
+import Matches from "./pages/Matches";
 import ProfileView from "./pages/ProfileView";
 import Chat from "./pages/Chat";
-
-
+import GlobalWebSocket from "./components/GlobalWebSocket";
 
 function App() {
-  const [token,setToken] = useState(localStorage.getItem("token")); // ✅ important
- 
+  const [token, setToken] = useState(localStorage.getItem("token"));
 
   return (
     <BrowserRouter>
+
+      {/* Global WebSocket stays active after login */}
+      {token && <GlobalWebSocket />}
+
       <Routes>
 
         {/* Default route */}
-        <Route path="/" element={<Navigate to="/login" />} />
+        <Route
+          path="/"
+          element={<Navigate to="/login" />}
+        />
 
-        {/* Login Route */}
+        {/* Login */}
         <Route
           path="/login"
-          element={<Login setToken={setToken}/>}
+          element={<Login setToken={setToken} />}
         />
 
         {/* Register */}
-        <Route path="/register" element={<Register />} />
+        <Route
+          path="/register"
+          element={<Register />}
+        />
 
         {/* Protected Dashboard */}
         <Route
           path="/dashboard"
-          element={token ? <Dashboard setToken={setToken}/> : <Navigate to="/login" />}
+          element={
+            token
+              ? <Dashboard setToken={setToken} />
+              : <Navigate to="/login" />
+          }
         />
 
-        <Route path="/profile" element={<Profile/>}/>
-        <Route path="/matches" element={<Matches/>}/>
+        <Route
+          path="/profile"
+          element={token ? <Profile /> : <Navigate to="/login" />}
+        />
 
-        <Route path="/profile/:id" element={<ProfileView />} />
+        <Route
+          path="/matches"
+          element={token ? <Matches /> : <Navigate to="/login" />}
+        />
 
-        <Route path="/chat" element={<Chat/>}/>
+        <Route
+          path="/profile/:id"
+          element={token ? <ProfileView /> : <Navigate to="/login" />}
+        />
 
-       
-        {/* <Route path="/testChat" element={<TestChat/>}/> */}
-
+        <Route
+          path="/chat"
+          element={token ? <Chat /> : <Navigate to="/login" />}
+        />
 
       </Routes>
+
     </BrowserRouter>
   );
 }

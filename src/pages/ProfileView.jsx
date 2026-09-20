@@ -6,9 +6,19 @@ function ProfileView(){
   const [user,setUser]=useState(null);
     const{id}=useParams();
     useEffect(() => {
-   fetch(`http://localhost:8081/users/${id}`)
-      .then(res => res.json())
-      .then(data => setUser(data));
+   fetch(`http://localhost:8081/users/${id}`,{
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`
+    }
+   })
+       .then(res => {
+    if (!res.ok) {
+      throw new Error(`Request failed: ${res.status}`);
+    }
+    return res.json();
+  })
+  .then(data => setUser(data))
+  .catch(err => console.error(err));
 }, [id]);
 
    

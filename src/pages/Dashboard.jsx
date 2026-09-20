@@ -67,10 +67,20 @@ function Dashboard({ setToken }) {
   // =====================================================
   useEffect(() => {
 
-    fetch("http://localhost:8081/users")
+    fetch("http://localhost:8081/users", {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`
+      }
+    })
 
       // Convert response into JSON
-      .then((res) => res.json())
+      //  .then((res) => res.json())
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`request failed :${res.status}`);
+        }
+        return res.json();
+      })
 
       // Store profiles into state
       .then((data) => setProfiles(data))
@@ -104,7 +114,7 @@ function Dashboard({ setToken }) {
   );
 
 
-  console.log(profiles.map(p => p.id));
+  //
 
 
 
@@ -146,11 +156,20 @@ function Dashboard({ setToken }) {
 
     // Call backend API
     fetch(
-      `http://localhost:8081/interests/incoming/${currentUserId}`
+      `http://localhost:8081/interests/incoming/${currentUserId}`, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`
+      }
+    }
     )
 
       // Convert JSON
-      .then((res) => res.json())
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`request failed :${res.status}`);
+        }
+        return res.json();
+      })
 
       // Store incoming requests
       .then((data) => {
@@ -178,19 +197,25 @@ function Dashboard({ setToken }) {
 
     // Call matches API
     fetch(
-      `http://localhost:8081/GetMatches/${currentUserId}`
+      `http://localhost:8081/GetMatches/${currentUserId}`, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`
+      }
+    }
     )
 
       // Convert response
-      .then((res) => res.json())
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`request failed :${res.status}`);
+        }
+        return res.json();
+      })
 
       // Store matches
       .then((data) => {
 
-        console.log(
-          "Matches API:",
-          data
-        );
+
 
         setMatches(data);
 
@@ -221,7 +246,10 @@ function Dashboard({ setToken }) {
         const response = await fetch(
           `http://localhost:8081/status/online/${Number(currentUserId)}/${true}`,
           {
-            method: "PUT"
+            method: "PUT",
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`
+            }
           }
         );
 
@@ -237,73 +265,34 @@ function Dashboard({ setToken }) {
       }
     };
 
+
+    // Mark user online
+    updateOnlineStatus();
     // =====================================================
     // UPDATE USER STATUS TO OFFLINE
     // Called when browser/tab closes
     // =====================================================
-    const handleOffline = async () => {
 
-
-
-      try {
-
-        // Call backend API
-        // Mark current user as OFFLINE
-        await fetch(
-          `http://localhost:8081/status/online/${Number(currentUserId)}/${false}`,
-          {
-            method: "PUT"
-          }
-        );
-
-      } catch (error) {
-
-        console.log(
-          "error",
-          error
-        );
-
-      }
-    };
-
-    // =====================================================
-    // ADD BROWSER EVENT
-    // Runs handleOffline when user closes page
-    // =====================================================
-    window.addEventListener(
-      "beforeunload",
-      handleOffline
-    );
-
-    // Mark user online
-    updateOnlineStatus();
-
-    // =====================================================
-    // CLEANUP
-    // Remove browser event when component unmounts
-    // =====================================================
-    return () => {
-
-      window.removeEventListener(
-        "beforeunload",
-        handleOffline
-      );
-
-    };
+  
 
   }, []);
 
+ /* useEffect(() => {
 
+    
+
+    return () => {
+        // nothing related to beforeunload
+    };
+
+}, []);*/
+   
   // =====================================================
   // FETCH ONLINE STATUS OF MATCHED USERS
   // =====================================================
 
   useEffect(() => {
 
-    console.log("======================================");
-    console.log("ONLINE STATUS useEffect STARTED");
-    console.log("Dashboard Chats:", dashBoardChats);
-    console.log("======================================");
 
     if (dashBoardChats.length === 0) {
       console.log("No dashboard chats found.");
@@ -312,37 +301,42 @@ function Dashboard({ setToken }) {
 
     const fetchOnlineUsers = async () => {
 
-      console.log("fetchOnlineUsers() called");
+
 
       const statuses = {};
 
       for (const chat of dashBoardChats) {
 
-        console.log("--------------------------------------");
-        console.log("Checking User:", chat.otherUserId);
+
 
         try {
 
           console.log(
             "Calling API:",
-            `http://localhost:8081/status/${chat.otherUserId}`
+            `http://localhost:8081/status/${chat.otherUserId}`, {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`
+
+            }
+          }
           );
 
           const response = await fetch(
-            `http://localhost:8081/status/${chat.otherUserId}`
+            `http://localhost:8081/status/${chat.otherUserId}`, {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`
+
+            }
+          }
           );
 
-          console.log(
-            "Response Status:",
-            response.status
-          );
 
+
+          if (!response.ok) {
+            throw new Error(`Request failed: ${response.status}`);
+          }
           const statusData = await response.json();
 
-          console.log(
-            "Status Received:",
-            statusData
-          );
 
           statuses[chat.otherUserId] = statusData;
 
@@ -389,7 +383,10 @@ function Dashboard({ setToken }) {
       await fetch(
         `http://localhost:8081/status/online/${Number(currentUserId)}/${false}`,
         {
-          method: "PUT"
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`
+          }
         }
       );
 
@@ -495,9 +492,16 @@ function Dashboard({ setToken }) {
           // Fetch dashboard chat information
           const response =
             await fetch(
-              `http://localhost:8081/messages/dashboard/${currentUserId}`
+              `http://localhost:8081/messages/dashboard/${currentUserId}`, {
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`
+              }
+            }
             );
 
+          if (!response.ok) {
+            throw new Error(`Request failed: ${response.status}`);
+          }
           const data =
             await response.json();
 
@@ -538,6 +542,9 @@ function Dashboard({ setToken }) {
       `http://localhost:8081/accept?fromUserId=${senderId}&toUserId=${receiverId}`,
       {
         method: "PUT",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`
+        }
       }
     )
       .then((res) => {
@@ -547,21 +554,39 @@ function Dashboard({ setToken }) {
 
         // Refresh incoming requests
         return fetch(
-          `http://localhost:8081/interests/incoming/${currentUserId}`
+          `http://localhost:8081/interests/incoming/${currentUserId}`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`
+          }
+        }
         );
       })
-      .then((res) => res.json())
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`request failed :${res.status}`);
+        }
+        return res.json();
+      })
       .then((data) => {
 
         setIncomingRequest(data);
 
         // Refresh matches
         return fetch(
-          `http://localhost:8081/GetMatches/${currentUserId}`
+          `http://localhost:8081/GetMatches/${currentUserId}`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`
+          }
+        }
         );
 
       })
-      .then((res) => res.json())
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`request failed :${res.status}`);
+        }
+        return res.json();
+      })
       .then((matchData) => {
 
         setMatches(matchData);
@@ -587,6 +612,9 @@ function Dashboard({ setToken }) {
       `http://localhost:8081/reject?fromUserId=${senderId}&toUserId=${receiverId}`,
       {
         method: "PUT",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`
+        }
       }
     )
       .then((res) => {
@@ -596,21 +624,39 @@ function Dashboard({ setToken }) {
 
         // Refresh incoming requests
         return fetch(
-          `http://localhost:8081/interests/incoming/${currentUserId}`
+          `http://localhost:8081/interests/incoming/${currentUserId}`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`
+          }
+        }
         );
       })
-      .then((res) => res.json())
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`request failed :${res.status}`);
+        }
+        return res.json();
+      })
       .then((data) => {
 
         setIncomingRequest(data);
 
         // Refresh matches
         return fetch(
-          `http://localhost:8081/GetMatches/${currentUserId}`
+          `http://localhost:8081/GetMatches/${currentUserId}`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`
+          }
+        }
         );
 
       })
-      .then((res) => res.json())
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`request failed :${res.status}`);
+        }
+        return res.json();
+      })
       .then((matchData) => {
 
         setMatches(matchData);
@@ -631,12 +677,21 @@ function Dashboard({ setToken }) {
   useEffect(() => {
 
     fetch(
-      `http://localhost:8081/interests/AllRequest/${currentUserId}`
+      `http://localhost:8081/interests/AllRequest/${currentUserId}`, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`
+      }
+    }
     )
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`request failed :${res.status}`);
+        }
+        return res.json();
+      })
       .then(data => {
 
-        console.log("API Response:", data);
+        //  console.log("API Response:", data);
 
         setReceivedRequests(data);
 
@@ -646,10 +701,10 @@ function Dashboard({ setToken }) {
 
   useEffect(() => {
 
-    console.log(
-      "receivedRequests updated:",
-      receivedRequests
-    );
+    /* console.log(
+       "receivedRequests updated:",
+       receivedRequests
+     );*/
 
   }, [receivedRequests]);
   return (

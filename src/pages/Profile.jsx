@@ -15,17 +15,21 @@ function Profile() {
 
   // ✅ Load existing profile (for update)
   useEffect(() => {
-    fetch(`http://localhost:8081/users/${currentUserId}`)
-    .then((res) => res.json())
-    .then((data) => {
-      setForm({
-        username: data.name,
-        age: data.age,
-        city: data.city,
-        bio: data.bio
-      });
+    fetch(`http://localhost:8081/users/${currentUserId}`, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`
+      }
     })
-    .catch((err) => console.log(err));
+      .then((res) => res.json())
+      .then((data) => {
+        setForm({
+          username: data.name,
+          age: data.age,
+          city: data.city,
+          bio: data.bio
+        });
+      })
+      .catch((err) => console.log(err));
   }, [currentUserId]);
 
   const handleChange = (e) => {
@@ -35,39 +39,40 @@ function Profile() {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-   // const profiles = JSON.parse(localStorage.getItem("profiles")) || [];
+    // const profiles = JSON.parse(localStorage.getItem("profiles")) || [];
 
-   const newProfile = {
-  name: form.username,
-  age: form.age,
-  city: form.city,
-  bio: form.bio
-};
+    const newProfile = {
+      name: form.username,
+      age: form.age,
+      city: form.city,
+      bio: form.bio
+    };
 
-fetch(
-  `http://localhost:8081/users/${currentUserId}`,
-  {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(newProfile)
-  }
-)
-.then((res) => {
- // console.log("Status:", res.status);
-  return res.json();
-})
-.then((data) => {
-  console.log("Saved Profile:", data);
+    fetch(
+      `http://localhost:8081/users/${currentUserId}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`
+        },
+        body: JSON.stringify(newProfile)
+      }
+    )
+      .then((res) => {
+        // console.log("Status:", res.status);
+        return res.json();
+      })
+      .then((data) => {
+        console.log("Saved Profile:", data);
 
-  alert("Profile Saved!");
+        alert("Profile Saved!");
 
-  navigate("/dashboard");
-})
-.catch((err) => {
-  console.error(err);
-});
+        navigate("/dashboard");
+      })
+      .catch((err) => {
+        console.error(err);
+      });
   };
 
   return (
