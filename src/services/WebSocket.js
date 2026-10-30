@@ -88,6 +88,8 @@ chatDeliveredCallback = receiveDeliveredStatus;
             new SockJS("http://localhost:8081/ws"),
 
           // Send JWT during STOMP connection
+          // when we send this backend know who connected 
+          // means it send the jwt token and then interecpt ,extract an then using principal it gets username
          connectHeaders: {
         Authorization: `Bearer ${localStorage.getItem("token")}`
     },
@@ -338,7 +340,7 @@ function sendTypingStatus(typingStatus) {
     });
 
 }
-function disconnect() {
+/*function disconnect() {
 
     //  console.log("Disconnect called");
 
@@ -350,6 +352,26 @@ function disconnect() {
     }
 
    chatStompClient = null;
+}*/
+
+function disconnect() {
+
+    // Disconnect Chat WebSocket
+    if (chatStompClient && chatStompClient.active) {
+        console.log("🔴 Disconnecting Chat WebSocket");
+        chatStompClient.deactivate();
+    }
+
+    chatStompClient = null;
+
+
+    // Disconnect Global WebSocket
+    if (globalStompClient && globalStompClient.active) {
+        console.log("🔴 Disconnecting Global WebSocket");
+        globalStompClient.deactivate();
+    }
+
+    globalStompClient = null;
 }
 
 // Export functions

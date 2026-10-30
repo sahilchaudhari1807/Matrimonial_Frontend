@@ -454,6 +454,8 @@ function Chat() {
 
   // If no user selected
   if (!user) return null;
+   console.log("USER STATUS:", userStatus);
+console.log("IS TYPING:", isTyping)
 
   return (
 
@@ -462,7 +464,8 @@ function Chat() {
       {/* ===================================
           HEADER SECTION
       =================================== */}
-
+   
+     
       <div className="flex items-center gap-3 bg-white shadow p-4">
 
         {/* Back button */}
@@ -471,12 +474,13 @@ function Chat() {
         </button>
 
         <div className="flex flex-col">
-
+        
           {/* Username */}
           <span className="font-semibold text-lg">
             {user?.username}
           </span>
 
+ 
           {isTyping ? (
             <span className="text-xs text-gray-500">
               {user.username} is typing...
