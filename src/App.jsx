@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
@@ -11,68 +12,72 @@ import Chat from "./pages/Chat";
 import GlobalWebSocket from "./components/GlobalWebSocket";
 
 function App() {
-  const [token, setToken] = useState(localStorage.getItem("token"));
+    const [token, setToken] = useState(localStorage.getItem("token"));
 
-  return (
-    <BrowserRouter>
+    return (
+        <BrowserRouter>
 
-      {/* Global WebSocket stays active after login */}
-      {token && <GlobalWebSocket />}
+            {/* Global WebSocket stays active on all protected pages */}
+            {token && <GlobalWebSocket />}
 
-      <Routes>
+            <Routes>
 
-        {/* Default route */}
-        <Route
-          path="/"
-          element={<Navigate to="/login" />}
-        />
+                {/* Default route */}
+                <Route
+                    path="/"
+                    element={<Navigate to="/login" />}
+                />
 
-        {/* Login */}
-        <Route
-          path="/login"
-          element={<Login setToken={setToken} />}
-        />
+                {/* Login */}
+                <Route
+                    path="/login"
+                    element={<Login setToken={setToken} />}
+                />
 
-        {/* Register */}
-        <Route
-          path="/register"
-          element={<Register />}
-        />
+                {/* Register */}
+                <Route
+                    path="/register"
+                    element={<Register />}
+                />
 
-        {/* Protected Dashboard */}
-        <Route
-          path="/dashboard"
-          element={
-            token
-              ? <Dashboard setToken={setToken} />
-              : <Navigate to="/login" />
-          }
-        />
+                {/* Dashboard */}
+                <Route
+                    path="/dashboard"
+                    element={
+                        token
+                            ? <Dashboard setToken={setToken} />
+                            : <Navigate to="/login" />
+                    }
+                />
 
-        <Route
-          path="/profile"
-          element={token ? <Profile /> : <Navigate to="/login" />}
-        />
+                {/* Profile */}
+                <Route
+                    path="/profile"
+                    element={token ? <Profile /> : <Navigate to="/login" />}
+                />
 
-        <Route
-          path="/matches"
-          element={token ? <Matches /> : <Navigate to="/login" />}
-        />
+                {/* Matches */}
+                <Route
+                    path="/matches"
+                    element={token ? <Matches /> : <Navigate to="/login" />}
+                />
 
-        <Route
-          path="/profile/:id"
-          element={token ? <ProfileView /> : <Navigate to="/login" />}
-        />
+                {/* Profile View */}
+                <Route
+                    path="/profile/:id"
+                    element={token ? <ProfileView /> : <Navigate to="/login" />}
+                />
 
-        <Route
-          path="/chat"
-          element={token ? <Chat /> : <Navigate to="/login" />}
-        />
+                {/* Chat */}
+                <Route
+                    path="/chat"
+                    element={token ? <Chat /> : <Navigate to="/login" />}
+                />
 
-      </Routes>
+            </Routes>
 
-    </BrowserRouter>
-  );
+        </BrowserRouter>
+    );
 }
 
 export default App;

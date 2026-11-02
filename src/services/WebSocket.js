@@ -137,22 +137,15 @@ function onConnected() {
 
     // console.log("Subscribed to /topic/seen");
     chatStompClient.subscribe("/topic/seen", (payload) => {
+    const updatedMessages = JSON.parse(payload.body);
 
-        // Raw payload from backend
-        // console.log("Seen Payload:", payload);
+    console.log("STEP 3: Chat WebSocket received Seen event");
+    console.log("Seen messages:", updatedMessages);
 
-        // Convert JSON array to JavaScript array
-        const updatedMessages = JSON.parse(payload.body);
-
-        // console.log("Seen Messages:", updatedMessages);
-
-        // Verify it is an array
-        //  console.log("Is Array:", Array.isArray(updatedMessages));
-
-        // Send to Chat.jsx
+    if (seenMessageCallback) {
         seenMessageCallback(updatedMessages);
-
-    });
+    }
+});
 
     chatStompClient.subscribe("/topic/status", (payload) => {
 
@@ -354,7 +347,7 @@ function sendTypingStatus(typingStatus) {
    chatStompClient = null;
 }*/
 
-function disconnect() {
+/*function disconnect() {
 
     // Disconnect Chat WebSocket
     if (chatStompClient && chatStompClient.active) {
@@ -372,7 +365,34 @@ function disconnect() {
     }
 
     globalStompClient = null;
+}*/
+
+
+function disconnectChat() {
+    if (chatStompClient) {
+        console.log("🔴 Disconnecting Chat WebSocket");
+
+        chatStompClient.deactivate();
+        chatStompClient = null;
+    }
 }
 
+function disconnectGlobal() {
+    if (globalStompClient) {
+        console.log("🔴 Disconnecting Global WebSocket");
+
+        globalStompClient.deactivate();
+        globalStompClient = null;
+    }
+}
+
+
 // Export functions
-export { connect, connectGlobal, sendMessage, sendTypingStatus, disconnect };
+export {
+    connect,
+    connectGlobal,
+    sendMessage,
+    sendTypingStatus,
+    disconnectChat,
+    disconnectGlobal
+};

@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 
 // React Hooks
 import { useEffect, useState } from "react";
-import { connect, disconnect } from "../services/WebSocket";
+import { connect, disconnectChat } from "../services/WebSocket";
 
 function Dashboard({ setToken }) {
 
@@ -225,67 +225,10 @@ function Dashboard({ setToken }) {
       .catch((err) => console.log(err));
 
   }, [currentUserId]);
-  // =====================================================
-  // ONLINE / OFFLINE STATUS MANAGEMENT
-  // =====================================================
+ 
 
-  useEffect(() => {
-
-    // =====================================================
-    // UPDATE USER STATUS TO ONLINE
-    // This runs when Dashboard loads
-    // =====================================================
-    const updateOnlineStatus = async () => {
-
-
-
-      try {
-
-        // Call backend API
-        // Mark current user as ONLINE
-        const response = await fetch(
-          `http://localhost:8081/status/online/${Number(currentUserId)}/${true}`,
-          {
-            method: "PUT",
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`
-            }
-          }
-        );
-
-
-
-      } catch (error) {
-
-        console.log(
-          "error",
-          error
-        );
-
-      }
-    };
-
-
-    // Mark user online
-    updateOnlineStatus();
-    // =====================================================
-    // UPDATE USER STATUS TO OFFLINE
-    // Called when browser/tab closes
-    // =====================================================
-
-  
-
-  }, []);
-
- /* useEffect(() => {
-
-    
-
-    return () => {
-        // nothing related to beforeunload
-    };
-
-}, []);*/
+ 
+ 
    
   // =====================================================
   // FETCH ONLINE STATUS OF MATCHED USERS
@@ -477,8 +420,8 @@ function Dashboard({ setToken }) {
     connect(receiveMessage, () => { });
 
     return () => {
-      disconnect();
-    };
+    disconnectChat();
+};
 
   }, []);
 

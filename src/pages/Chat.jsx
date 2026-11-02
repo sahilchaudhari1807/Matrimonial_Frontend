@@ -12,7 +12,7 @@ import React, { useEffect, useState, useRef } from "react";
 
 // Import location for receiving user data from previous page
 import { useLocation } from "react-router-dom";
-import { connect, sendMessage, sendTypingStatus, disconnect } from "../services/WebSocket";
+import { connect, sendMessage, sendTypingStatus, disconnectChat } from "../services/WebSocket";
 
 function Chat() {
 
@@ -95,16 +95,9 @@ function Chat() {
 
     if (
       String(chatMessage.receiverId) === String(currentUserId)
-
     ) {
-
-
-
-
-      console.log("✅ I am receiver");
-      console.log("📨 Message ID:", chatMessage.id);
-      markMessagesAsDelivered(chatMessage.id);
-
+      console.log("I am receiver");
+      markMessagesSeen();
     }
   }
 
@@ -131,7 +124,7 @@ function Chat() {
 
       console.log("cleanup executed");
 
-      disconnect();
+      disconnectChat();
 
     };
 
@@ -143,78 +136,75 @@ function Chat() {
   // from the WebSocket without adding duplicate messages.
   // ======================================================
   // Update the seen status of messages received from WebSocket
-  function receiveSeenMessage(updatedMessages) {
+  
+function receiveSeenMessage(updatedMessages) {
 
-    console.log("Seen status received:", updatedMessages);
+    console.log("========== SEEN UPDATE RECEIVED ==========");
 
-    if (updatedMessages.length === 0) {
-      return;
+    // LOG 1: What backend sends
+    console.log("SEEN EVENT DATA:", updatedMessages);
+
+    if (!Array.isArray(updatedMessages) || updatedMessages.length === 0) {
+        console.log("No messages received");
+        return;
     }
 
     setMessages((previousMessages) => {
 
-      console.log("BEFORE SEEN UPDATE:", previousMessages);
+        const updated = previousMessages.map((msg) => {
 
-      return previousMessages.map((msg) => {
+            const updatedMessage = updatedMessages.find(
+                item => String(item.id) === String(msg.id)
+            );
 
-        const updatedMessage = updatedMessages.find(
-          updated => updated.id === msg.id
-        );
+            if (!updatedMessage) {
+                return msg;
+            }
 
-        if (!updatedMessage) {
-          return msg;
-        }
+            // LOG 2: Compare old and new values
+            console.log("BEFORE UPDATE:", msg);
+            console.log("FROM BACKEND:", updatedMessage);
 
-        console.log(
-          "Updating message:",
-          msg.id,
-          "delivered:",
-          msg.delivered,
-          "seen:",
-          updatedMessage.seen
-        );
+            return {
+                ...msg,
+                delivered: updatedMessage.delivered,
+                seen: updatedMessage.seen
+            };
+        });
 
-        return {
-          ...msg,
-            delivered: updatedMessage.delivered,
-          seen: updatedMessage.seen
-        };
-      });
+        // LOG 3: Check updated messages
+        console.log("UPDATED MESSAGE STATE:", updated);
+
+        return updated;
     });
-  }
-
+}
 
   // ===================================
   // MARK MESSAGES AS SEEN
   // ===================================
   const markMessagesSeen = async () => {
-    console.log(
-      "markMessagesSeen()"
-
-    );
+    console.log("MARK SEEN CALLED", {
+      chatId,
+      currentUserId,
+      time: new Date().toLocaleTimeString()
+    });
     try {
-
-      await fetch(
+      const response = await fetch(
         `http://localhost:8081/messages/seen/${chatId}/${currentUserId}`,
         {
           method: "PUT",
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`
-
           }
         }
       );
 
+      console.log("STEP 1 RESPONSE:", response.status);
+
     } catch (error) {
-
-      console.log(
-        "error updating seen status",
-        error
-      );
-
+      console.log("Error updating seen status:", error);
     }
   };
-
 
   // ===================================
   // MARK MESSAGES AS DELIVERED
@@ -253,9 +243,13 @@ function Chat() {
 
       return previousMessages.map((msg) => {
 
-        if (msg.id === updatedMessage.id) {
-          return updatedMessage;
-        }
+       if (String(msg.id) === String(updatedMessage.id)) {
+    return {
+        ...msg,
+        ...updatedMessage,
+        seen: msg.seen || updatedMessage.seen
+    };
+}
 
         return msg;
       });
@@ -433,7 +427,7 @@ function Chat() {
         const status =
           await response.json();
 
-          console.log("STATUS FROM API:", status);
+        console.log("STATUS FROM API:", status);
 
         setUserStatus(status);
 
@@ -454,8 +448,8 @@ function Chat() {
 
   // If no user selected
   if (!user) return null;
-   console.log("USER STATUS:", userStatus);
-console.log("IS TYPING:", isTyping)
+  console.log("USER STATUS:", userStatus);
+  console.log("IS TYPING:", isTyping)
 
   return (
 
@@ -464,8 +458,8 @@ console.log("IS TYPING:", isTyping)
       {/* ===================================
           HEADER SECTION
       =================================== */}
-   
-     
+
+
       <div className="flex items-center gap-3 bg-white shadow p-4">
 
         {/* Back button */}
@@ -474,13 +468,13 @@ console.log("IS TYPING:", isTyping)
         </button>
 
         <div className="flex flex-col">
-        
+
           {/* Username */}
           <span className="font-semibold text-lg">
             {user?.username}
           </span>
 
- 
+
           {isTyping ? (
             <span className="text-xs text-gray-500">
               {user.username} is typing...
@@ -568,13 +562,15 @@ console.log("IS TYPING:", isTyping)
 
 
 
-                      {!msg.delivered ? (
-                        <span>✓</span>
-                      ) : !msg.seen ? (
-                        <span>✓✓</span>
-                      ) : (
+
+                      {msg.seen ? (
                         <span className="text-cyan-300 opacity-100">✓✓</span>
+                      ) : msg.delivered ? (
+                        <span className="text-gray-300">✓✓</span>
+                      ) : (
+                        <span>✓</span>
                       )}
+
 
 
                     </>
