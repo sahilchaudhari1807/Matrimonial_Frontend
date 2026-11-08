@@ -1,5 +1,5 @@
 export const markMessagesAsDelivered =async(messageId)=>{
-    console.log("markMessagesAsDelivered()", messageId);
+   // console.log("markMessagesAsDelivered()", messageId);
 
     try {
 

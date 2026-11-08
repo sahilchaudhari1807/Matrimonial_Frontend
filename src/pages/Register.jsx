@@ -5,6 +5,7 @@ import { useNavigate, Link } from "react-router-dom";
 function Register({ setPage }) {
 
   const navigate = useNavigate();
+  const [register, setRegister] = useState();
   const [form, setForm] = useState({
     username: "",
     password: ""
@@ -28,7 +29,7 @@ function Register({ setPage }) {
 
 
     } catch (err) {
-      console.log(err);
+     setRegister("user is already exists");
     }
   };
 
@@ -57,6 +58,11 @@ function Register({ setPage }) {
           className="w-full mb-4 p-2 border rounded"
         />
 
+        {register ? (
+          <p className="text-red-500">{register}</p>
+        ) : (
+          null
+        )}
         <button className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600">
           Register
         </button>

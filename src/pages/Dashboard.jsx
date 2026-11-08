@@ -133,16 +133,7 @@ function Dashboard({ setToken }) {
       return;
     }
 
-    /*
-    Future logic:
-
-    If profile not created
-    redirect to profile page
-
-    if (!currentUser) {
-      navigate("/profile", { replace: true });
-    }
-    */
+   
 
   }, [currentUserId, currentUser, navigate]);
 
@@ -238,7 +229,7 @@ function Dashboard({ setToken }) {
 
 
     if (dashBoardChats.length === 0) {
-      console.log("No dashboard chats found.");
+     // console.log("No dashboard chats found.");
       return;
     }
 
@@ -644,10 +635,7 @@ function Dashboard({ setToken }) {
 
   useEffect(() => {
 
-    /* console.log(
-       "receivedRequests updated:",
-       receivedRequests
-     );*/
+    
 
   }, [receivedRequests]);
   return (

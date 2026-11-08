@@ -64,7 +64,7 @@ function Profile() {
         return res.json();
       })
       .then((data) => {
-        console.log("Saved Profile:", data);
+      //  console.log("Saved Profile:", data);
 
         alert("Profile Saved!");
 

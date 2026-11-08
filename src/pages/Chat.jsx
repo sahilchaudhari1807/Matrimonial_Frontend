@@ -8,7 +8,7 @@ Auto scrolls to latest message.
 Tracks typing state using setTimeout().*/
 
 // Import React hooks
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useLayoutEffect, useState, useRef } from "react";
 
 // Import location for receiving user data from previous page
 import { useLocation } from "react-router-dom";
@@ -71,6 +71,13 @@ function Chat() {
 
   // Store all messages
   const [messages, setMessages] = useState([]);
+  const [isMessagesLoaded, setIsMessagesLoaded] = useState(false);
+  const [activeDropdown, setActiveDropdown] = useState(null);
+  // const dropdownRef = useRef(null);
+  const [openUpward, setOpenUpward] = useState(false);
+
+
+ 
 
   function receiveMessage(chatMessage) {
 
@@ -90,13 +97,13 @@ function Chat() {
 
     });
 
-    console.log("Receiver ID:", chatMessage.receiverId);
-    console.log("Current User ID:", currentUserId);
+    //  console.log("Receiver ID:", chatMessage.receiverId);
+    //console.log("Current User ID:", currentUserId);
 
     if (
       String(chatMessage.receiverId) === String(currentUserId)
     ) {
-      console.log("I am receiver");
+      //  console.log("I am receiver");
       markMessagesSeen();
     }
   }
@@ -122,7 +129,7 @@ function Chat() {
 
     return () => {
 
-      console.log("cleanup executed");
+      // console.log("cleanup executed");
 
       disconnectChat();
 
@@ -136,48 +143,48 @@ function Chat() {
   // from the WebSocket without adding duplicate messages.
   // ======================================================
   // Update the seen status of messages received from WebSocket
-  
-function receiveSeenMessage(updatedMessages) {
 
-    console.log("========== SEEN UPDATE RECEIVED ==========");
+  function receiveSeenMessage(updatedMessages) {
+
+    // console.log("========== SEEN UPDATE RECEIVED ==========");
 
     // LOG 1: What backend sends
-    console.log("SEEN EVENT DATA:", updatedMessages);
+    // console.log("SEEN EVENT DATA:", updatedMessages);
 
     if (!Array.isArray(updatedMessages) || updatedMessages.length === 0) {
-        console.log("No messages received");
-        return;
+      // console.log("No messages received");
+      return;
     }
 
     setMessages((previousMessages) => {
 
-        const updated = previousMessages.map((msg) => {
+      const updated = previousMessages.map((msg) => {
 
-            const updatedMessage = updatedMessages.find(
-                item => String(item.id) === String(msg.id)
-            );
+        const updatedMessage = updatedMessages.find(
+          item => String(item.id) === String(msg.id)
+        );
 
-            if (!updatedMessage) {
-                return msg;
-            }
+        if (!updatedMessage) {
+          return msg;
+        }
 
-            // LOG 2: Compare old and new values
-            console.log("BEFORE UPDATE:", msg);
-            console.log("FROM BACKEND:", updatedMessage);
+        // LOG 2: Compare old and new values
+        // console.log("BEFORE UPDATE:", msg);
+        // console.log("FROM BACKEND:", updatedMessage);
 
-            return {
-                ...msg,
-                delivered: updatedMessage.delivered,
-                seen: updatedMessage.seen
-            };
-        });
+        return {
+          ...msg,
+          delivered: updatedMessage.delivered,
+          seen: updatedMessage.seen
+        };
+      });
 
-        // LOG 3: Check updated messages
-        console.log("UPDATED MESSAGE STATE:", updated);
+      // LOG 3: Check updated messages
+      // console.log("UPDATED MESSAGE STATE:", updated);
 
-        return updated;
+      return updated;
     });
-}
+  }
 
   // ===================================
   // MARK MESSAGES AS SEEN
@@ -199,19 +206,48 @@ function receiveSeenMessage(updatedMessages) {
         }
       );
 
-      console.log("STEP 1 RESPONSE:", response.status);
+      //  console.log("STEP 1 RESPONSE:", response.status);
 
     } catch (error) {
-      console.log("Error updating seen status:", error);
+      //console.log("Error updating seen status:", error);
     }
   };
+  //==================================
+  //DELETE FOR ME//
+  //==================================
+
+  const DeleteForMe = async (messageId) => {
+    try {
+        const response = await fetch(
+            `http://localhost:8081/messages/${messageId}`,
+            {
+                method: "DELETE",
+                headers: {
+                  "Authorization": `Bearer ${localStorage.getItem("token")}`
+                }
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error("Failed to delete message");
+        }
+
+        setMessages(prevMessages =>
+            prevMessages.filter(message => message.id !== messageId)
+        );
+
+    } catch (error) {
+        console.error("Delete error:", error);
+    }
+};
+
 
   // ===================================
   // MARK MESSAGES AS DELIVERED
   // ===================================
   const markMessagesAsDelivered = async (messageId) => {
 
-    console.log("markMessagesAsDelivered()", messageId);
+    // console.log("markMessagesAsDelivered()", messageId);
 
     try {
 
@@ -227,29 +263,29 @@ function receiveSeenMessage(updatedMessages) {
 
     } catch (error) {
 
-      console.log(
+      /*console.log(
         "error updating Delivered status",
         error
-      );
+      );*/
 
     }
   };
 
   function receiveDeliveredStatus(updatedMessage) {
 
-    console.log("Delivered status received:", updatedMessage);
+    // console.log("Delivered status received:", updatedMessage);
 
     setMessages((previousMessages) => {
 
       return previousMessages.map((msg) => {
 
-       if (String(msg.id) === String(updatedMessage.id)) {
-    return {
-        ...msg,
-        ...updatedMessage,
-        seen: msg.seen || updatedMessage.seen
-    };
-}
+        if (String(msg.id) === String(updatedMessage.id)) {
+          return {
+            ...msg,
+            ...updatedMessage,
+            seen: msg.seen || updatedMessage.seen
+          };
+        }
 
         return msg;
       });
@@ -280,7 +316,7 @@ function receiveSeenMessage(updatedMessages) {
         const data = await response.json();
 
         setMessages(data);
-
+        setIsMessagesLoaded(true);
         const hasUnread = data.some(
           msg =>
             String(msg.receiverId) === String(currentUserId) &&
@@ -305,16 +341,34 @@ function receiveSeenMessage(updatedMessages) {
 
 
 
+  /// DROPDOWN THE OPTIONS OF DELETE  COPY  FORWARD
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest(".message-dropdown")) {
+        setActiveDropdown(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+
   // ===================================
   // AUTO SCROLL TO LATEST MESSAGE
   // ===================================
-  useEffect(() => {
-
-    bottomRef.current?.scrollIntoView({
-      behavior: "smooth"
-    });
-
-  }, [messages]);
+  useLayoutEffect(() => {
+    if (isMessagesLoaded) {
+      bottomRef.current?.scrollIntoView({
+        behavior: "instant",
+        block: "end"
+      });
+    }
+  }, [isMessagesLoaded, messages]);
 
   // ===================================
   // SEND MESSAGE
@@ -392,14 +446,14 @@ function receiveSeenMessage(updatedMessages) {
 
   function receiveUpdateStatus(updatedStatus) {
 
-    console.log("Received Status:", updatedStatus);
+    // console.log("Received Status:", updatedStatus);
 
     // Ignore updates for users other than the one whose chat is open
     if (String(updatedStatus.userId) !== String(user.userId)) {
       return;
     }
 
-    console.log("Updating Chat Header");
+    // console.log("Updating Chat Header");
 
     // Update React state
     setUserStatus(updatedStatus);
@@ -427,7 +481,7 @@ function receiveSeenMessage(updatedMessages) {
         const status =
           await response.json();
 
-        console.log("STATUS FROM API:", status);
+        // console.log("STATUS FROM API:", status);
 
         setUserStatus(status);
 
@@ -439,7 +493,7 @@ function receiveSeenMessage(updatedMessages) {
     };
 
     // Load status immediately
-    console.log("Status useEffect executed from chat page");
+    //   console.log("Status useEffect executed from chat page");
     fetchStatus();
 
 
@@ -448,8 +502,8 @@ function receiveSeenMessage(updatedMessages) {
 
   // If no user selected
   if (!user) return null;
-  console.log("USER STATUS:", userStatus);
-  console.log("IS TYPING:", isTyping)
+  //console.log("USER STATUS:", userStatus);
+  //console.log("IS TYPING:", isTyping)
 
   return (
 
@@ -505,9 +559,7 @@ function receiveSeenMessage(updatedMessages) {
 
         {messages.map((msg,) => {
 
-          /*  if (msg.id === 83) {
-              console.log(msg);
-            }*/
+
 
           // Check if message belongs to me
           const isMe =
@@ -528,6 +580,55 @@ function receiveSeenMessage(updatedMessages) {
             >
 
               <div className="flex flex-col">
+                <div className="flex justify-end relative message-dropdown">
+
+                  <button
+                    onClick={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const spaceBelow = window.innerHeight - rect.bottom;
+
+                      setOpenUpward(spaceBelow < 250);
+
+                      setActiveDropdown(
+                        activeDropdown === msg.id ? null : msg.id
+                      );
+                    }}
+                    className="text-lg font-bold px-1"
+                  >
+                    ⋮
+                  </button>
+
+                  {/* Dropdown options */}
+                  {activeDropdown === msg.id && (
+                    <div
+                      className={`absolute right-0 ${openUpward ? "bottom-full mb-2" : "top-full mt-2"
+                        } bg-white text-black shadow-lg rounded-md p-2 z-50 min-w-40`}
+                    >
+
+                      <button className="block w-full text-left p-2 hover:bg-gray-100">
+                        Reply
+                      </button>
+
+                      <button className="block w-full text-left p-2 hover:bg-gray-100">
+                        Forward
+                      </button>
+
+                      <button className="block w-full text-left p-2 hover:bg-gray-100">
+                        Copy
+                      </button>
+
+                      <button  onClick={()=>DeleteForMe(msg.id)}className="block w-full text-left p-2 hover:bg-gray-100 text-red-500">
+                        Delete for me
+                      </button>
+
+                      <button className="block w-full text-left p-2 hover:bg-gray-100 text-red-500">
+                        Delete for everyone
+                      </button>
+
+                    </div>
+                  )}
+
+                </div>
 
                 {/* Message text */}
                 <span>
@@ -612,6 +713,12 @@ function receiveSeenMessage(updatedMessages) {
           placeholder="Type a message..."
           value={input}
           onChange={handleTyping}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              handleSend();
+            }
+          }}
           className="flex-1 border rounded px-3 py-2 outline-none"
         />
 

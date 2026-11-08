@@ -67,10 +67,10 @@ let globalDeliveredCallback = null;
 function connect(receiveMessage, receiveSeenMessage, receiveUpdateStatus, receiveTypingStatus, receiveDeliveredStatus) {
 
     // Debug: Check how many times connect() is called
-    console.log("connect() called");
+  
 
     if (chatStompClient && chatStompClient.active) {
-        console.log("already connected");
+     //   console.log("already connected");
         return;
     }
     // Store callback so we can use it later
@@ -139,8 +139,8 @@ function onConnected() {
     chatStompClient.subscribe("/topic/seen", (payload) => {
     const updatedMessages = JSON.parse(payload.body);
 
-    console.log("STEP 3: Chat WebSocket received Seen event");
-    console.log("Seen messages:", updatedMessages);
+  //  console.log("STEP 3: Chat WebSocket received Seen event");
+   // console.log("Seen messages:", updatedMessages);
 
     if (seenMessageCallback) {
         seenMessageCallback(updatedMessages);
@@ -171,7 +171,7 @@ function onConnected() {
     chatStompClient.subscribe("/topic/delivered", (payload) => {
 
         const updateDelivered = JSON.parse(payload.body);
-        console.log("Meesage come from backend", updateDelivered);
+      //  console.log("Meesage come from backend", updateDelivered);
 
         if (chatDeliveredCallback) {
     chatDeliveredCallback(updateDelivered);
@@ -190,22 +190,21 @@ function connectGlobal(receiveGlobalMessage, receiveGlobalSeen,
     globalTypingCallback = receiveGlobalTyping;
     globalDeliveredCallback = receiveGlobalDelivered;
 
-    console.log("🔥 connectGlobal called");
-
+   
     globalMessageCallback = receiveGlobalMessage;
 
     if (globalStompClient && globalStompClient.active) {
-        console.log("❌ Existing WebSocket already active");
+      //  console.log("❌ Existing WebSocket already active");
         return;
     }
 
-    console.log("🟢 Creating Global WebSocket");
+  //  console.log("🟢 Creating Global WebSocket");
 
 
-     console.log(
+    /* console.log(
     "JWT TOKEN:",
     localStorage.getItem("token")
-);
+);*/
     // Create STOMP client
     globalStompClient = new Client({
 
@@ -234,22 +233,18 @@ function onGlobalConnected() {
     // MESSAGE
     const subscription=globalStompClient.subscribe("/topic/public", (payload) => {
 
-        console.log("📩 /topic/public received");
-        
-          console.log("🔥🔥🔥 MESSAGE RECEIVED FROM BROKER 🔥🔥🔥");
-            console.log("Payload:", payload);
-            console.log("Body:", payload.body);
+       
 
         const message = JSON.parse(payload.body);
 
-        console.log("🌍 Global message:", message);
+     //   console.log("🌍 Global message:", message);
 
         if (globalMessageCallback) {
             globalMessageCallback(message);
         }
-         console.log("✅ Global subscribed to /topic/public");
+        // console.log("✅ Global subscribed to /topic/public");
     });
-    console.log("✅ Subscription created:", subscription);
+   // console.log("✅ Subscription created:", subscription);
 
     // SEEN
   globalStompClient.subscribe("/topic/seen", (payload) => {
@@ -321,7 +316,7 @@ function sendMessage(message) {
 
     });
 
-    //  console.log("Message Published");
+   
 }
 
 function sendTypingStatus(typingStatus) {
@@ -370,7 +365,7 @@ function sendTypingStatus(typingStatus) {
 
 function disconnectChat() {
     if (chatStompClient) {
-        console.log("🔴 Disconnecting Chat WebSocket");
+       // console.log("🔴 Disconnecting Chat WebSocket");
 
         chatStompClient.deactivate();
         chatStompClient = null;
@@ -379,7 +374,7 @@ function disconnectChat() {
 
 function disconnectGlobal() {
     if (globalStompClient) {
-        console.log("🔴 Disconnecting Global WebSocket");
+       // console.log("🔴 Disconnecting Global WebSocket");
 
         globalStompClient.deactivate();
         globalStompClient = null;
