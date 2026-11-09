@@ -34,6 +34,8 @@ function Chat() {
   // Unused currently
   const [profiles, setProfiles] = useState([]);
 
+  const dropdownRef = useRef(null);
+
   // Get selected chat user
   // If page refreshes, load from localStorage
   const user =
@@ -73,11 +75,17 @@ function Chat() {
   const [messages, setMessages] = useState([]);
   const [isMessagesLoaded, setIsMessagesLoaded] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState(null);
-  // const dropdownRef = useRef(null);
-  const [openUpward, setOpenUpward] = useState(false);
+
+  const [dropdownPosition, setDropdownPosition] = useState({
+    top: 0,
+    left: 0
+  });
 
 
- 
+
+
+
+
 
   function receiveMessage(chatMessage) {
 
@@ -218,29 +226,67 @@ function Chat() {
 
   const DeleteForMe = async (messageId) => {
     try {
-        const response = await fetch(
-            `http://localhost:8081/messages/${messageId}`,
-            {
-                method: "DELETE",
-                headers: {
-                  "Authorization": `Bearer ${localStorage.getItem("token")}`
-                }
-            }
-        );
-
-        if (!response.ok) {
-            throw new Error("Failed to delete message");
+      const response = await fetch(
+        `http://localhost:8081/messages/${messageId}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Authorization": `Bearer ${localStorage.getItem("token")}`
+          }
         }
+      );
 
-        setMessages(prevMessages =>
-            prevMessages.filter(message => message.id !== messageId)
-        );
+      if (!response.ok) {
+        throw new Error("Failed to delete message");
+      }
+
+      setMessages(prevMessages =>
+        prevMessages.filter(message => message.id !== messageId)
+      );
 
     } catch (error) {
-        console.error("Delete error:", error);
+      console.error("Delete error:", error);
     }
-};
+  };
 
+
+
+  //==================================
+  //DELETE FOR EVERYONE
+  //==================================
+
+  const DeleteForEveryone = async (messageId) => {
+    console.log("Delete for everyone clicked:", messageId);
+
+    try {
+      const response = await fetch(
+        `http://localhost:8081/messages/everyone/${messageId}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Authorization": `Bearer ${localStorage.getItem("token")}`
+          }
+        }
+      );
+
+      console.log("Backend response:", response.status);
+
+      if (!response.ok) {
+        throw new Error("Failed to delete message for everyone");
+      }
+
+      setMessages(prevMessages =>
+        prevMessages.map(message =>
+          String(message.id) === String(messageId)
+            ? { ...message, deletedForEveryone: true }
+            : message
+        )
+      );
+
+    } catch (error) {
+      console.error("Delete for everyone error:", error);
+    }
+  };
 
   // ===================================
   // MARK MESSAGES AS DELIVERED
@@ -345,7 +391,10 @@ function Chat() {
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (!event.target.closest(".message-dropdown")) {
+      if (
+        !event.target.closest(".message-dropdown") &&
+        !event.target.closest(".message-dropdown-menu")
+      ) {
         setActiveDropdown(null);
       }
     };
@@ -361,14 +410,48 @@ function Chat() {
   // ===================================
   // AUTO SCROLL TO LATEST MESSAGE
   // ===================================
-  useLayoutEffect(() => {
+  /*useLayoutEffect(() => {
     if (isMessagesLoaded) {
       bottomRef.current?.scrollIntoView({
         behavior: "instant",
         block: "end"
       });
     }
-  }, [isMessagesLoaded, messages]);
+  }, [isMessagesLoaded, messages]);*/
+
+  useLayoutEffect(() => {
+    if (activeDropdown === null || !dropdownRef.current) return;
+
+    const menu = dropdownRef.current;
+
+    const button = document.querySelector(
+      `.message-dropdown[data-message-id="${activeDropdown}"] button`
+    );
+
+    if (!button) return;
+
+    const rect = button.getBoundingClientRect();
+    const menuRect = menu.getBoundingClientRect();
+
+    const gap = 8;
+
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const openBelow = spaceBelow >= menuRect.height + gap;
+
+    const top = openBelow
+      ? rect.bottom + gap
+      : Math.max(8, rect.top - menuRect.height - gap);
+
+    const left = Math.max(
+      8,
+      Math.min(
+        rect.right - menuRect.width,
+        window.innerWidth - menuRect.width - 8
+      )
+    );
+
+    setDropdownPosition({ top, left });
+  }, [activeDropdown]);
 
   // ===================================
   // SEND MESSAGE
@@ -580,59 +663,74 @@ function Chat() {
             >
 
               <div className="flex flex-col">
-                <div className="flex justify-end relative message-dropdown">
-
-                  <button
-                    onClick={(e) => {
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      const spaceBelow = window.innerHeight - rect.bottom;
-
-                      setOpenUpward(spaceBelow < 250);
-
-                      setActiveDropdown(
-                        activeDropdown === msg.id ? null : msg.id
-                      );
-                    }}
-                    className="text-lg font-bold px-1"
+                {!msg.deletedForEveryone && (
+                  <div
+                    className="flex justify-end relative message-dropdown"
+                    data-message-id={msg.id}
                   >
-                    ⋮
-                  </button>
 
-                  {/* Dropdown options */}
-                  {activeDropdown === msg.id && (
-                    <div
-                      className={`absolute right-0 ${openUpward ? "bottom-full mb-2" : "top-full mt-2"
-                        } bg-white text-black shadow-lg rounded-md p-2 z-50 min-w-40`}
+                    <button
+                      onClick={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+
+                        setActiveDropdown(
+                          activeDropdown === msg.id ? null : msg.id
+                        );
+
+                        setDropdownPosition({
+                          top: rect.bottom + 8,
+                          left: Math.max(8, rect.right - 192)
+                        });
+                      }}
                     >
+                      ⋮
+                    </button>
 
-                      <button className="block w-full text-left p-2 hover:bg-gray-100">
-                        Reply
-                      </button>
+                    {/* Dropdown options */}
+                    {activeDropdown === msg.id && (
+                      <div
+                        ref={dropdownRef}
+                        style={{
+                          position: "fixed",
+                          top: dropdownPosition.top,
+                          left: dropdownPosition.left,
+                          width: "192px",
+                          zIndex: 9999
+                        }}
+                        className="message-dropdown-menu bg-white text-black shadow-xl rounded-xl p-2"
+                      >
 
-                      <button className="block w-full text-left p-2 hover:bg-gray-100">
-                        Forward
-                      </button>
+                        <button className="block w-full text-left p-2 hover:bg-gray-100 whitespace-nowrap">
+                          Reply
+                        </button>
 
-                      <button className="block w-full text-left p-2 hover:bg-gray-100">
-                        Copy
-                      </button>
+                        <button className="block w-full text-left p-2 hover:bg-gray-100 whitespace-nowrap">
+                          Forward
+                        </button>
 
-                      <button  onClick={()=>DeleteForMe(msg.id)}className="block w-full text-left p-2 hover:bg-gray-100 text-red-500">
-                        Delete for me
-                      </button>
+                        <button className="block w-full text-left p-2 hover:bg-gray-100 whitespace-nowrap">
+                          Copy
+                        </button>
 
-                      <button className="block w-full text-left p-2 hover:bg-gray-100 text-red-500">
-                        Delete for everyone
-                      </button>
+                        <button onClick={() => DeleteForMe(msg.id)} className="block w-full text-left p-2 hover:bg-gray-100 text-red-500 whitespace-nowrap">
+                          Delete for me
+                        </button>
 
-                    </div>
-                  )}
+                        <button onClick={() => DeleteForEveryone(msg.id)} className="block w-full text-left p-2 hover:bg-gray-100 text-red-500 whitespace-nowrap">
+                          Delete for everyone
+                        </button>
 
-                </div>
+                      </div>
+                    )}
 
+                  </div>
+                )}
+                {/* Message text */}
                 {/* Message text */}
                 <span>
-                  {msg.content}
+                  {msg.deletedForEveryone
+                    ? "This message was deleted"
+                    : msg.content}
                 </span>
 
                 {/* Time + Seen status */}
